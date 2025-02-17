@@ -8,7 +8,6 @@ class StepperMotor {
     StepperMotor();
     void step_right();
     void step_left();
-    void print_pins();
 
   private:
     const std::array<unsigned int, 4> pins;
