@@ -42,13 +42,6 @@ void StepperMotor::step_left() {
   }
 }
 
-void StepperMotor::print_pins() {
-  for (auto pin : pins) {
-    std::cout << gpio_get(pin) << " ";
-  }
-  std::cout << std::endl;
-}
-
 // For testing
 
 // int main() {

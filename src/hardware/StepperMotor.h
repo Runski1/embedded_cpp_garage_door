@@ -3,8 +3,6 @@
 
 #include <array>
 
-#define OCTO 28
-
 class StepperMotor {
   public:
     StepperMotor();
