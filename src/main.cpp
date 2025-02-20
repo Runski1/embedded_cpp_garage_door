@@ -7,7 +7,7 @@
 #include "irq/irq_handler.h"
 #include "irq/irq_queue.h"
 
-#include "ctl_unit/state_machine.h"
+#include "control_unit/ctl_unit.h"
 
 queue_t irq_queue;
 
