@@ -1,9 +1,17 @@
 #include <iostream>
-#include "hardware/gpio.h"
+#include "GpioPin.h"
 #include "StepperMotor.h"
+#include "../pins.h"
 
 StepperMotor::StepperMotor() :
-  pins{{2, 3, 6, 13}},
+  pins{
+    {
+      GpioPin(STEP_1, GPIO_OUT, true),
+      GpioPin(STEP_2, GPIO_OUT, true),
+      GpioPin(STEP_3, GPIO_OUT, true),
+      GpioPin(STEP_4, GPIO_OUT, true),
+    }
+  },
   phase{0},
   phases{
     {
@@ -17,29 +25,14 @@ StepperMotor::StepperMotor() :
       {true, false, false, true}
     }
   }
-{
-  for (int i = 0; i < 4; i++) {
-    gpio_init(pins[i]);
-    gpio_set_dir(pins[i], true);
-    gpio_pull_up(pins[i]);
-
-    gpio_put(pins[i], false);
-  }
-
-}
+{}
 
 void StepperMotor::step_right() {
-  phase = (phase + 1) % 8;
-  for (int i = 0; i < 4; i++) {
-    gpio_put(pins[i], phases[phase][i]);
-  }
+  set_phase((phase + 1) % 8);
 }
 
 void StepperMotor::step_left() {
-  phase = (phase - 1) % 8;
-  for (int i = 0; i < 4; i++) {
-    gpio_put(pins[i], phases[phase][i]);
-  }
+  set_phase((phase - 1) % 8);
 }
 
 // For testing

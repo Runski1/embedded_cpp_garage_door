@@ -2,26 +2,20 @@
 #include "hardware/gpio.h"
 
 #include "RotaryEncoder.h"
+#include "GpioPin.h"
 #include "../irq/irq_handler.h"
 
-RotaryEncoder::RotaryEncoder() :
-  rot_a{27},
-  rot_b(28)
+RotaryEncoder::RotaryEncoder(const uint rot_a_pin, const uint rot_b_pin) :
+  rot_a{GpioPin(rot_a_pin, GPIO_IN, false, false)},
+  rot_b{GpioPin(rot_b_pin, GPIO_IN, false, false)}
 {
-  const unsigned int pins[2] = {rot_a, rot_b};
-
-  for (int i{0}; i < 2; i++) {
-    gpio_init(pins[i]);
-    gpio_set_dir(pins[i], GPIO_IN);
-  }
-
-  gpio_set_irq_enabled(rot_a, GPIO_IRQ_EDGE_RISE, true);
+  rot_a.enable_irq(GPIO_IRQ_EDGE_RISE);
   printf("RotaryEncoder created\n");
 }
 
-void RotaryEncoder::print() {
-  int a = gpio_get(rot_a);
-  int b = gpio_get(rot_b);
+void RotaryEncoder::print() const {
+  int a = rot_a.get();
+  int b = rot_b.get();
   if (a != 0 || b != 0) {
     printf("A: %d, B: %d\n", a, b);
   }
@@ -38,13 +32,15 @@ void RotaryEncoder::print() {
 #include "Button.h"
 #include "../irq/irq_queue.h"
 
-void RotaryEncoder::test() {
+void RotaryEncoder::test() const {
+  printf("RotaryEncoder::test\n");
   StepperMotor motor;
   Button btn1(7, true);
   Button btn2(9, true);
   uint irqv;
 
   while (true) {
+    printf("Btn1: %d\n", btn1());
     if (btn1()) {
       motor.step_right();
     } else if (btn2()) {
