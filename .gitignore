@@ -1,3 +1,14 @@
-CMakeLists.txt
+CMakelists.txt
 build/*
-pico-sdk/*
+src/network/build/
+*/pico-sdk/*
+# Matias uses this for LSP
+.clang*
+.cache*
+# If we fuck with bash scripts
+*.sh
+# you should set up your broker any way you wish
+mqtt_broker/*
+# minicom log format
+*.cap
+
