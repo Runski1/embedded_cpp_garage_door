@@ -3,7 +3,7 @@
 
 #include "RotaryEncoder.h"
 #include "GpioPin.h"
-#include "../irq/irq_handler.h"
+#include "../irq/irq.h"
 
 RotaryEncoder::RotaryEncoder(const uint rot_a_pin, const uint rot_b_pin) :
   rot_a{GpioPin(rot_a_pin, GPIO_IN, false, false)},
