@@ -1,7 +1,7 @@
 #ifndef BUTTON_H_
 #define BUTTON_H_
 
-// #include "GpioPin.h"
+#include "GpioPin.h"
 
 #define BTN_TEST
 
