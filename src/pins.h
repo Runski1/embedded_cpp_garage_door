@@ -8,6 +8,9 @@
 #define ROT_A 27
 #define ROT_B 28
 
+#define BOARD_ROT_A 10
+#define BOARD_ROT_B 11
+
 #define STEP_1 2
 #define STEP_2 3
 #define STEP_3 6
