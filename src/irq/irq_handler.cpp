@@ -8,7 +8,7 @@
 
 #include <iostream>
 
-void rot_a_handler(const bool onboard) {
+static void rot_a_handler(const bool onboard) {
   const uint rot_b = !onboard ? ROT_B : BOARD_ROT_B;
 
   if (gpio_get(rot_b) == 1) {
@@ -26,7 +26,7 @@ void rot_a_handler(const bool onboard) {
   }
 }
 
-void btn_handler(const int event) {
+static void btn_handler(const int event) {
   queue_try_add(&irq_queue, &event);
 }
 
