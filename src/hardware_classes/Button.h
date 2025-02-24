@@ -3,7 +3,7 @@
 
 #include "GpioPin.h"
 
-#define BTN_TEST
+// #define BTN_TEST
 
 class Button {
   public:

@@ -3,7 +3,7 @@
 
 #include "GpioPin.h"
 
-#define ROT_TEST
+// #define ROT_TEST
 
 class RotaryEncoder {
   public:

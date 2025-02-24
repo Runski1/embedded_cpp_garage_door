@@ -1,7 +1,8 @@
 #ifndef STEPPER_MOTOR_H_
 #define STEPPER_MOTOR_H_
 
-#define MOTOR_TEST
+// #define MOTOR_TEST
+
 #define WAIT_TIME_US 800
 
 #include <array>
