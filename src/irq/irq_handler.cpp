@@ -6,15 +6,21 @@
 #include "../hardware_classes/Led.h"
 #include "../pins.h"
 
-void rot_a_handler() {
-  const uint rot_b{28};
+#include <iostream>
 
-  if (gpio_get(rot_b) == 1) {
+void rot_a_handler() {
+  if (gpio_get(ROT_B) == 1) {
     const int x{ROT_POS};
-    queue_try_add(&irq_queue, &x);
+    if (!queue_try_add(&irq_queue, &x)) {
+      std::cout << "ERROR in rot_a_handler" << std::endl;
+      exit(1);
+    };
   } else {
     const int x{ROT_NEG};
-    queue_try_add(&irq_queue, &x);
+    if (!queue_try_add(&irq_queue, &x)) {
+      std::cout << "ERROR in rot_a_handler" << std::endl;
+      exit(1);
+    };
   }
 }
 
