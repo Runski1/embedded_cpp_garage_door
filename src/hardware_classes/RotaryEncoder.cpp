@@ -25,33 +25,29 @@ void RotaryEncoder::print() const {
 #ifdef ROT_TEST
 
 #include "pico/time.h"
-#include "pico/stdio.h"
 #include "pico/util/queue.h"
+#include "hardware/gpio.h"
 
-#include "StepperMotor.h"
-#include "Button.h"
-#include "../irq/irq_queue.h"
+#include "../irq/irq.h"
+#include "../pins.h"
 
-void RotaryEncoder::test() const {
-  printf("RotaryEncoder::test\n");
-  StepperMotor motor;
-  Button btn1(7, true);
-  Button btn2(9, true);
-  uint irqv;
+void RotaryEncoder::test() {
+  printf("RotaryEncoder::test\nUses the onboard rotary encoder\n");
 
+  RotaryEncoder rot(BOARD_ROT_A, BOARD_ROT_B);
+
+  irq_event irq;
   while (true) {
-    printf("Btn1: %d\n", btn1());
-    if (btn1()) {
-      motor.step_right();
-    } else if (btn2()) {
-      motor.step_left();
+    while (queue_try_remove(&irq_queue, &irq)) {
+      switch (irq) {
+        case ROT_CLOCKWISE:
+          printf("CLOCKWISE\n");
+          break;
+        case ROT_ANTI_CLOCKWISE:
+          printf("ANTI CLOCKWISE\n");
+          break;
+      }
     }
-
-    if (queue_try_remove(&irq_queue, &irqv)) {
-      printf("%d\n", irqv);
-    }   
-
-    sleep_ms(10);
   }
 }
 
