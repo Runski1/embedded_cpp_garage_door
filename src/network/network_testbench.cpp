@@ -5,6 +5,7 @@
 #include "pico/time.h"
 #include "hardware/timer.h"
 #include "uart/PicoUart.h"
+#include <cstring>
 
 #include "IPStack.h"
 #include "Countdown.h"
@@ -113,7 +114,8 @@ int main() {
             MQTT::Message message;
             message.retained = false;
             message.dup = false;
-            message.payload = (void *) buf;
+            message.payload = (void*) buf;
+            printf("payload len: %d\n", message.payloadlen);
             switch (mqtt_qos) {
                 case 0:
                     // Send and receive QoS 0 message
