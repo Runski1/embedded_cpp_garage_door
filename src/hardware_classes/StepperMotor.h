@@ -1,6 +1,10 @@
 #ifndef STEPPER_MOTOR_H_
 #define STEPPER_MOTOR_H_
 
+// #define MOTOR_TEST
+
+#define WAIT_TIME_US 800
+
 #include <array>
 
 #include "GpioPin.h"
@@ -10,6 +14,10 @@ class StepperMotor {
     StepperMotor();
     void step_right();
     void step_left();
+
+#ifdef MOTOR_TEST
+    static void test();
+#endif
 
   private:
     const std::array<GpioPin, 4> pins;

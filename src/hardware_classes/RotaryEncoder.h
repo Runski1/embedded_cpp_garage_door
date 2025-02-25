@@ -9,8 +9,9 @@ class RotaryEncoder {
   public:
     RotaryEncoder(const uint rot_a_pin, const uint rot_b_pin);
     void print() const;
+
 #ifdef ROT_TEST
-    void test() const;
+    static void test();
 #endif
   
   private:

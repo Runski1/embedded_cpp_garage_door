@@ -6,8 +6,8 @@
 extern queue_t irq_queue;
 
 enum irq_event {
-  ROT_NEG,
-  ROT_POS,
+  ROT_CLOCKWISE,
+  ROT_ANTI_CLOCKWISE,
   PRESS_0,
   PRESS_1,
   PRESS_2
