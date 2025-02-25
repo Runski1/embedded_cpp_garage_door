@@ -1,7 +1,8 @@
 CMakelists.txt
 **/build/
 **/pico-sdk/
-# Matias uses this for LSP
+# Matias uses these for LSP
+**/compile_commands.json
 .clang*
 **/.cache*
 # If we fuck with bash scripts
