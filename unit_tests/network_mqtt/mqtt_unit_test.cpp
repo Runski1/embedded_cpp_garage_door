@@ -43,12 +43,14 @@ int main() {
 
     printf("\nBoot\n");
 
+// Connect to WIFI
+
     // IPStack ipstack("SSID", "PASSWORD");
     IPStack ipstack(NETWORK_SSID, NETWORK_PASSWORD);
     auto client = MQTT::Client<IPStack, Countdown>(ipstack);
 
     // lwIP error codes ${PICO_SDK_PATH}/lib/lwip/src/include/lwip/err.h
-    int rc = ipstack.connect("192.168.101.100", 1883);
+    int rc = ipstack.connect(SERVER_IP, 1883);
     if (rc != 1) {
         // TODO add rc translator
         printf("rc from TCP connect is %d\n", rc);

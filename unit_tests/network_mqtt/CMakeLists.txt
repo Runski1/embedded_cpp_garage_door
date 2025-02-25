@@ -19,17 +19,24 @@ else()
 endif()
 
 # Read Password
-if(DEFINED ENV{PASSWORD})
-    set(NETWORK_PASSWORD "$ENV{PASSWORD}")
+if(DEFINED ENV{WIFI_PASS})
+    set(NETWORK_PASSWORD "$ENV{WIFI_PASS}")
 else()
     set(NETWORK_PASSWORD "default_password")
     message(WARNING "PASSWORD is not set! Using default_password.")
+endif()
+if(DEFINED ENV{MQTT_SERVER_IP})
+    set(SERVER_IP "$ENV{MQTT_SERVER_IP}")
+else()
+    set(SERVER_IP "asdf")
+    message(WARNING "Broker IP is not set! Using default_password.")
 endif()
 
 # Pass to compiler as preprocessor definitions
 add_compile_definitions(
     NETWORK_SSID="${NETWORK_SSID}"
     NETWORK_PASSWORD="${NETWORK_PASSWORD}"
+    SERVER_IP="${MQTT_SERVER_IP}"
 )
 # <----------------------------NETWORK
 
