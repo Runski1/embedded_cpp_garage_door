@@ -19,8 +19,8 @@ else()
 endif()
 
 # Read Password
-if(DEFINED ENV{PASSWORD})
-    set(NETWORK_PASSWORD "$ENV{PASSWORD}")
+if(DEFINED ENV{WIFI_PASS})
+    set(NETWORK_PASSWORD "$ENV{PASS}")
 else()
     set(NETWORK_PASSWORD "default_password")
     message(WARNING "PASSWORD is not set! Using default_password.")
