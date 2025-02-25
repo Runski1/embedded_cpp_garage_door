@@ -22,20 +22,20 @@ add_compile_options(-Wall
         -Wno-unused-function # we have some for the docs that aren't called
         -Wno-maybe-uninitialized
 )
-file(GLOB MQTT_SOURCES "paho.mqtt.embedded-c/MQTTPacket/src/*.c")
+file(GLOB MQTT_SOURCES "../../src/network/paho.mqtt.embedded-c/MQTTPacket/src/*.c")
 
 # Tell CMake where to find the executable source file
 add_executable(${PROJECT_NAME}
-        network_testbench.cpp
-        uart/PicoUart.cpp
-        uart/PicoUart.h
-        uart/RingBuffer.cpp
-        uart/RingBuffer.h
-        mqtt/Countdown.cpp
-        mqtt/Countdown.h
-        mqtt/IPStack.cpp
-        mqtt/IPStack.h
-        mqtt/lwipopts.h
+        ../../src/network/mqtt_unit_test.cpp
+        ../../src/network/uart/PicoUart.cpp
+        ../../src/network/uart/PicoUart.h
+        ../../src/network/uart/RingBuffer.cpp
+        ../../src/network/uart/RingBuffer.h
+        ../../src/network/mqtt/Countdown.cpp
+        ../../src/network/mqtt/Countdown.h
+        ../../src/network/mqtt/IPStack.cpp
+        ../../src/network/mqtt/IPStack.h
+        ../../src/network/mqtt/lwipopts.h
         ${MQTT_SOURCES}
 )
 
@@ -48,10 +48,10 @@ pico_add_extra_outputs(${PROJECT_NAME})
 #        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.uf2 d: )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-        mqtt
-        uart
-        paho.mqtt.embedded-c/MQTTPacket/src
-        paho.mqtt.embedded-c/MQTTClient/src
+        ../../src/network/mqtt
+        ../../src/network/uart
+        ../../src/network/paho.mqtt.embedded-c/MQTTPacket/src
+        ../../src/network/paho.mqtt.embedded-c/MQTTClient/src
 )
 
 # Link to pico_stdlib (gpio, time, etc. functions)
