@@ -3,9 +3,7 @@
 #include "pico/util/queue.h"
 #include "hardware/gpio.h"
 
-#include "hardware_classes/RotaryEncoder.h"
-#include "irq/irq_handler.h"
-#include "irq/irq_queue.h"
+#include "irq/irq.h"
 
 queue_t irq_queue;
 

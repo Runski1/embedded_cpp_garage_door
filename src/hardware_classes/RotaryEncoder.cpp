@@ -2,26 +2,20 @@
 #include "hardware/gpio.h"
 
 #include "RotaryEncoder.h"
-#include "../irq/irq_handler.h"
+#include "GpioPin.h"
+#include "../irq/irq.h"
 
-RotaryEncoder::RotaryEncoder() :
-  rot_a{27},
-  rot_b(28)
+RotaryEncoder::RotaryEncoder(const uint rot_a_pin, const uint rot_b_pin) :
+  rot_a{GpioPin(rot_a_pin, GPIO_IN, false, false)},
+  rot_b{GpioPin(rot_b_pin, GPIO_IN, false, false)}
 {
-  const unsigned int pins[2] = {rot_a, rot_b};
-
-  for (int i{0}; i < 2; i++) {
-    gpio_init(pins[i]);
-    gpio_set_dir(pins[i], GPIO_IN);
-  }
-
-  gpio_set_irq_enabled(rot_a, GPIO_IRQ_EDGE_RISE, true);
+  rot_a.enable_irq(GPIO_IRQ_EDGE_RISE);
   printf("RotaryEncoder created\n");
 }
 
-void RotaryEncoder::print() {
-  int a = gpio_get(rot_a);
-  int b = gpio_get(rot_b);
+void RotaryEncoder::print() const {
+  int a = rot_a.get();
+  int b = rot_b.get();
   if (a != 0 || b != 0) {
     printf("A: %d, B: %d\n", a, b);
   }
@@ -31,31 +25,29 @@ void RotaryEncoder::print() {
 #ifdef ROT_TEST
 
 #include "pico/time.h"
-#include "pico/stdio.h"
 #include "pico/util/queue.h"
+#include "hardware/gpio.h"
 
-#include "StepperMotor.h"
-#include "Button.h"
-#include "../irq/irq_queue.h"
+#include "../irq/irq.h"
+#include "../pins.h"
 
 void RotaryEncoder::test() {
-  StepperMotor motor;
-  Button btn1(7, true);
-  Button btn2(9, true);
-  uint irqv;
+  printf("RotaryEncoder::test\nUses the onboard rotary encoder\n");
 
+  RotaryEncoder rot(BOARD_ROT_A, BOARD_ROT_B);
+
+  irq_event irq;
   while (true) {
-    if (btn1()) {
-      motor.step_right();
-    } else if (btn2()) {
-      motor.step_left();
+    while (queue_try_remove(&irq_queue, &irq)) {
+      switch (irq) {
+        case ROT_CLOCKWISE:
+          printf("CLOCKWISE\n");
+          break;
+        case ROT_ANTI_CLOCKWISE:
+          printf("ANTI CLOCKWISE\n");
+          break;
+      }
     }
-
-    if (queue_try_remove(&irq_queue, &irqv)) {
-      printf("%d\n", irqv);
-    }   
-
-    sleep_ms(10);
   }
 }
 

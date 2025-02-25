@@ -1,13 +1,23 @@
 #ifndef BUTTON_H_
 #define BUTTON_H_
 
+#include "GpioPin.h"
+
+// #define BTN_TEST
+
 class Button {
   public:
     Button(uint pin, bool invert);
-    bool operator()();
+    inline bool operator()() const {
+      return pin.get();
+    };
+
+#ifdef BTN_TEST
+    static void test();
+#endif
 
   private:
-    const uint pin;
+    const GpioPin pin;
 };
 
 #endif
