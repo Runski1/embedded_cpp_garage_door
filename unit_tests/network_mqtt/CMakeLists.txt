@@ -2,13 +2,40 @@
 cmake_minimum_required(VERSION 3.6)
 # Set board type because we are building for PicoW
 set(PICO_BOARD pico_w)
+
 # Please let cmake write compile_commands.json for my LSP - Matias
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Include build functions from Pico SDK
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
+
+# NETWORK ------------------------> 
+if(DEFINED ENV{SSID})
+    set(NETWORK_SSID "$ENV{SSID}")
+else()
+    set(NETWORK_SSID "default_ssid")  # Fallback value
+    message(WARNING "SSID is not set! Using default_ssid.")
+endif()
+
+# Read Password
+if(DEFINED ENV{PASSWORD})
+    set(NETWORK_PASSWORD "$ENV{PASSWORD}")
+else()
+    set(NETWORK_PASSWORD "default_password")
+    message(WARNING "PASSWORD is not set! Using default_password.")
+endif()
+
+# Pass to compiler as preprocessor definitions
+add_compile_definitions(
+    NETWORK_SSID="${NETWORK_SSID}"
+    NETWORK_PASSWORD="${NETWORK_PASSWORD}"
+)
+# <----------------------------NETWORK
+
 # Set name of project (as PROJECT_NAME) and C/C   standards
-project(network_testbench)
+# DON'T USE WHITESPACE IN PROJECT_NAME
+project(PROJECT_NAME)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -22,20 +49,21 @@ add_compile_options(-Wall
         -Wno-unused-function # we have some for the docs that aren't called
         -Wno-maybe-uninitialized
 )
-file(GLOB MQTT_SOURCES "paho.mqtt.embedded-c/MQTTPacket/src/*.c")
+file(GLOB MQTT_SOURCES "../../src/network/paho.mqtt.embedded-c/MQTTPacket/src/*.c")
 
 # Tell CMake where to find the executable source file
+# USE RELATIVE PATHS
 add_executable(${PROJECT_NAME}
-        network_testbench.cpp
-        uart/PicoUart.cpp
-        uart/PicoUart.h
-        uart/RingBuffer.cpp
-        uart/RingBuffer.h
-        mqtt/Countdown.cpp
-        mqtt/Countdown.h
-        mqtt/IPStack.cpp
-        mqtt/IPStack.h
-        mqtt/lwipopts.h
+        mqtt_unit_test.cpp
+        ../../src/network/uart/PicoUart.cpp
+        ../../src/network/uart/PicoUart.h
+        ../../src/network/uart/RingBuffer.cpp
+        ../../src/network/uart/RingBuffer.h
+        ../../src/network/mqtt/Countdown.cpp
+        ../../src/network/mqtt/Countdown.h
+        ../../src/network/mqtt/IPStack.cpp
+        ../../src/network/mqtt/IPStack.h
+        ../../src/network/mqtt/lwipopts.h
         ${MQTT_SOURCES}
 )
 
@@ -48,10 +76,10 @@ pico_add_extra_outputs(${PROJECT_NAME})
 #        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.uf2 d: )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-        mqtt
-        uart
-        paho.mqtt.embedded-c/MQTTPacket/src
-        paho.mqtt.embedded-c/MQTTClient/src
+        ../../src/network/mqtt
+        ../../src/network/uart
+        ../../src/network/paho.mqtt.embedded-c/MQTTPacket/src
+        ../../src/network/paho.mqtt.embedded-c/MQTTClient/src
 )
 
 # Link to pico_stdlib (gpio, time, etc. functions)

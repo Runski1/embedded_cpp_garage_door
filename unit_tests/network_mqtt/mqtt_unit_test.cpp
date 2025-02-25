@@ -43,9 +43,8 @@ int main() {
 
     printf("\nBoot\n");
 
-    // IPStack ipstack("SSID", "PASSWORD"); // example
-    // IPStack ipstack("KME662", "SmartIot"); // example
-    IPStack ipstack("free_wifi", "r0t4nk0l0"); // example
+    // IPStack ipstack("SSID", "PASSWORD");
+    IPStack ipstack(NETWORK_SSID, NETWORK_PASSWORD);
     auto client = MQTT::Client<IPStack, Countdown>(ipstack);
 
     // lwIP error codes ${PICO_SDK_PATH}/lib/lwip/src/include/lwip/err.h
