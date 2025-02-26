@@ -1,7 +1,13 @@
 #ifndef STEPPER_MOTOR_H_
 #define STEPPER_MOTOR_H_
 
+// #define MOTOR_TEST
+
+#define WAIT_TIME_US 800
+
 #include <array>
+
+#include "GpioPin.h"
 
 class StepperMotor {
   public:
@@ -9,10 +15,21 @@ class StepperMotor {
     void step_right();
     void step_left();
 
+#ifdef MOTOR_TEST
+    static void test();
+#endif
+
   private:
-    const std::array<unsigned int, 4> pins;
-    unsigned int phase;
+    const std::array<GpioPin, 4> pins;
+    uint phase;
     const std::array<std::array<bool, 4>, 8> phases;
+
+    inline void set_phase(const uint new_phase) {
+      phase = new_phase;
+      for (int i{0}; i < 4; i++) {
+        pins[i].put(phases[phase][i]);
+      }
+    }
 };
 
 #endif
