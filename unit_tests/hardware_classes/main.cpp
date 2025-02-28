@@ -10,6 +10,7 @@ queue_t irq_queue;
 void button_test();
 void rotary_encoder_test();
 void stepper_motor_test();
+void switch_test();
 
 void init() {
   stdio_init_all();
@@ -28,6 +29,7 @@ int main() {
   // button_test();
   // rotary_encoder_test();
   // stepper_motor_test();
+  switch_test();
 
   return 0;
 }

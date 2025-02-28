@@ -13,6 +13,7 @@ add_executable(${CMAKE_PROJECT_NAME}
   button_test.cpp
   rotary_encoder_test.cpp
   stepper_motor_test.cpp
+  switch_test.cpp
   ../../src/hardware_classes/Button.cpp
   ../../src/irq/irq_handler.cpp
   ../../src/hardware_classes/GpioPin.cpp

@@ -20,4 +20,7 @@
 #define LED_1 21
 #define LED_2 20
 
+#define SW_MOT 4
+#define SW_ROT 5
+
 #endif

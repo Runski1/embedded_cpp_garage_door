@@ -5,7 +5,7 @@
 
 class Button {
   public:
-    Button(uint pin, bool invert);
+    Button(const uint pin, const bool invert);
     inline bool operator()() const {
       return pin.get();
     };

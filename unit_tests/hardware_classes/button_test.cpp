@@ -23,11 +23,19 @@ void button_test() {
 
   while (true) {
     if (queue_try_remove(&irq_queue, &x)) {
-      std::cout << x << std::endl;
       switch (x) {
-        case PRESS_0: gpio_put(LED_0, 1); break;
-        case PRESS_1: gpio_put(LED_1, 1); break;
-        case PRESS_2: gpio_put(LED_2, 1); break;
+        case PRESS_0:
+          std::printf("PRESS_0\n");
+          gpio_put(LED_0, 1);
+          break;
+        case PRESS_1:
+          std::printf("PRESS_1\n");
+          gpio_put(LED_1, 1);
+          break;
+        case PRESS_2:
+          std::printf("PRESS_2\n");
+          gpio_put(LED_2, 1);
+          break;
       }
     }
     sleep_ms(100);
