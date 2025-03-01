@@ -12,6 +12,8 @@ void button_test() {
   Button btn0(9, true);
   Button btn1(8, true);
   Button btn2(7, true);
+  Button sw_mot(SW_MOT, true);
+  Button sw_rot(SW_ROT, true);
 
   const uint leds[] = {LED_0, LED_1, LED_2};
   for (auto pin : leds) {
@@ -19,11 +21,11 @@ void button_test() {
     gpio_set_dir(pin, GPIO_OUT);
   }
 
-  int x;
+  irq_event irq_result;
 
   while (true) {
-    if (queue_try_remove(&irq_queue, &x)) {
-      switch (x) {
+    while (queue_try_remove(&irq_queue, &irq_result)) {
+      switch (irq_result) {
         case PRESS_0:
           std::printf("PRESS_0\n");
           gpio_put(LED_0, 1);
@@ -35,6 +37,12 @@ void button_test() {
         case PRESS_2:
           std::printf("PRESS_2\n");
           gpio_put(LED_2, 1);
+          break;
+        case CLICK_MOT:
+          std::printf("CLICK_MOT\n");
+          break;
+        case CLICK_ROT:
+          std::printf("CLICK_ROT\n");
           break;
       }
     }
