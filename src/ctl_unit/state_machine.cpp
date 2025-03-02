@@ -1,22 +1,27 @@
 
+#include <memory>
 #include "state_machine.h"
+#include <iostream>
 
 
 StateMachine::StateMachine
-(const std::shared_ptr<Button> btn_ptr, int st_door=0): bt0_ptr(btn_ptr)
+(const std::shared_ptr<Button> bt0_ptr, int state_door=0)
+    :  state_door(state_door), bt0_ptr(bt0_ptr)
 {
-    state_door=st_door;
-    state_mvdir=st_door-1;  // open->down(2->1), closed->up(1->0)
+    state_mvdir=state_door-1;  // open->down(2->1), closed->up(1->0)
     status_calibrated=0;
     status_error=0;
+    signal=false;
 }
 
 // returns status of the door
-int StateMachine::operator()()
-{}
+int StateMachine::operator()() const
+{
+    return state_door;
+}
 
 // returns the status of the door
-int StateMachine::getStatus(void)
+int StateMachine::getStatus(void) const
 {}
 
 /*
@@ -62,22 +67,27 @@ void StateMachine::init()
 
 void StateMachine::operate(void)
 {
-    switch (state)
+    switch (state_door)
     {
         case (0):
             // MIGHT BE A BLOCK FOR ERROR STATE
+            std::cout << "ERR" << std::endl;
             break;
         case (1):
-            // MOVE UP 
+            // closed 
+            std::cout << "CLOSED" << std::endl;
             break;
         case (2):
-            // MOVE DOWN 
+            // open 
+            std::cout << "OPENED" << std::endl;
             break;
         case (3):
-            // CONTINUE MOVEMENT 
+            // still
+            std::cout << "STILL" << std::endl;
             break;
         case (4):
-            // STOP MOVING
+            // moving 
+            std::cout << "MOVING" << std::endl;
             break;
     }
 
@@ -102,7 +112,12 @@ void StateMachine::action(void)
     }
     */
 
-    if (state_door <= 2) state_door=4;         // set state to 4(moving)
-    else if (state_door == 3) state_door++;    // set to moving if still
-    else if (state_door == 4) state_door--;    // set to still if moving
+    if (state_door <= 2) {
+        state_door=4;               // set state to 4(moving)
+    } else if (state_door == 3) {
+        state_door++;               // set to moving if still
+        state_mvdir=!state_mvdir;   // change direction
+    } else if (state_door == 4) {
+        state_door--;               // set to still if moving
+    }
 }
