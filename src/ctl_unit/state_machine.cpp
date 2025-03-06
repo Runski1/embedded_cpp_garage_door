@@ -1,17 +1,26 @@
 
-#include <memory>
+#include "pico/stdlib.h"
 #include "state_machine.h"
-#include <iostream>
+#include "../hardware_classes/Button.h"
+#include "../hardware_classes/GpioPin.h"
+#include "../hardware_classes/RotaryEncoder.h"
+#include "../hardware_classes/StepperMotor.h"
+#include "../pins.h"
 
 
-StateMachine::StateMachine
-(const std::shared_ptr<Button> bt0_ptr, int state_door=0)
-    :  state_door(state_door), bt0_ptr(bt0_ptr)
+StateMachine::StateMachine 
+(int state_door=3) 
+: state_door(state_door), state_mvdir(state_door-1),
+status_calibrated(1), status_error(0), signal(false),
+sw0(BTN_0,true), sw1(BTN_1,true), sw2(BTN_2,true),
+stp()
 {
-    state_mvdir=state_door-1;  // open->down(2->1), closed->up(1->0)
-    status_calibrated=0;
-    status_error=0;
-    signal=false;
+/*
+    this->state_mvdir=state_door-1;  // open->down(2->1), closed->up(1->0)
+    this->status_calibrated=0;
+    this->status_error=0;
+    this->signal=false;
+*/
 }
 
 // returns status of the door
@@ -24,43 +33,6 @@ int StateMachine::operator()() const
 int StateMachine::getStatus(void) const
 {}
 
-/*
-// set the status of the door
-void StateMachine::operator()(int)
-{}
-
-
-// set the status of the door
-void StateMachine::setStatus(int)
-{}
-// advance the state to the next one(0→1→2→3→0) 
-int StateMachine::advance()
-{
-    switch (this->state)
-    {
-        // closed
-        case (0):
-            ++this->state;  // set to "opening"
-            break;
-        // opening
-        case (1):
-            ++this->state;  // set to "open"
-            break;
-        // open
-        case (2):
-            ++this->state;  // set to "closing"
-            break;
-        // closing
-        case (3):
-            this->state=0;  // set to "closed"
-            break;
-        default:
-            this->state=4; // set to "broken"
-    }
-    return (this->state);
-}
-*/
-
 void StateMachine::init()
 {
 }
@@ -69,29 +41,29 @@ void StateMachine::operate(void)
 {
     switch (state_door)
     {
-        case (0):
+        case (BLOCK):
             // MIGHT BE A BLOCK FOR ERROR STATE
-            std::cout << "ERR" << std::endl;
             break;
-        case (1):
+        case (CLOSED):
             // closed 
-            std::cout << "CLOSED" << std::endl;
             break;
-        case (2):
+        case (OPEN):
             // open 
-            std::cout << "OPENED" << std::endl;
             break;
-        case (3):
+        case (STILL):
             // still
-            std::cout << "STILL" << std::endl;
             break;
-        case (4):
+        case (MOVING):
             // moving 
-            std::cout << "MOVING" << std::endl;
+            revolve();
             break;
+        default:
+            state_door=BLOCK;
     }
 
-    if (signal) action();
+    if ( sw1() ) action();
+    if ( sw0() && sw2() ) calibrate();
+
 }
 
 // set a flag for doing stuff
@@ -103,9 +75,9 @@ void StateMachine::setsignal(void)
 // check the signal flag and if it is set, then do something 
 void StateMachine::action(void)
 {
-    signal=false; // reset signal
+    //signal=false; // reset signal // TODO: SCHEDULED FOR DELETE
 
-    // add check for calibration
+    if (!status_calibrated) return;
     /*
     if (state_mvdir != 0 && SPEED == 0 )   // add speed here
     {
@@ -121,3 +93,11 @@ void StateMachine::action(void)
         state_door--;               // set to still if moving
     }
 }
+
+void StateMachine::revolve()
+{
+    if (state_mvdir)        stp.step_right();
+    else if (!state_mvdir)  stp.step_left();
+}
+
+void StateMachine::calibrate() { status_calibrated = true; };

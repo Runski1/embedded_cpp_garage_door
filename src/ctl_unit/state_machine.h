@@ -1,6 +1,10 @@
 
-//#include "pico/stdlib.h"
-#include <memory>
+#include "pico/stdlib.h"
+#include "../hardware_classes/Button.h"
+#include "../hardware_classes/GpioPin.h"
+#include "../hardware_classes/RotaryEncoder.h"
+#include "../hardware_classes/StepperMotor.h"
+
 #ifndef STATEMACHINE_H_
 
 /*
@@ -20,7 +24,7 @@ opposite direction (stopped during opening→close and vice versa)
 
 */
 // TODO: here lies the button placeholder
-#define BUTTON_PLACEHOLDER
+//#define BUTTON_PLACEHOLDER
 #ifdef BUTTON_PLACEHOLDER
 class Button{
     public:
@@ -37,26 +41,30 @@ class Button{
 
 class StateMachine {
 public:
-    StateMachine(const std::shared_ptr<Button> btn_ptr,int state_door);
+    StateMachine(int state_door);
     StateMachine(StateMachine &) = delete; // do not copy
 
     int operator()() const;     // returns status of the door
     //void operator()(int);       // set the status of the door
 
-    int getStatus(void) const; // returns the status of the door
-    //void setStatus(bool);       // set the status of the door
+    int getDirection();
+    void setDirection();
 
-    //int getDirection();
-    //void setDirection();
+    int getStatus() const;
 
-    //bool getError();
-    //void setError();
+    bool getError();
+    void setError();
 
     void init(void);
     void operate(void);     // do stuff based on states
+
+private:
     void setsignal(void);   // set a flag for doing stuff
     void action(void);
-private:
+    void revolve(void);
+    void calibrate();
+
+
     int state_door;         // 1:closed,2:open,3=still,4=moving,0=maybe block
     bool state_mvdir;       // 1=down, 0=up, 
     bool status_calibrated; // door status
@@ -64,7 +72,12 @@ private:
 
     bool signal; 
 
-    const std::shared_ptr<Button> bt0_ptr;
+    Button sw0;
+    Button sw1;
+    Button sw2;
+    StepperMotor stp;
+
+    enum State {BLOCK, CLOSED, OPEN, STILL, MOVING};
 };
 
 #endif
