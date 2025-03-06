@@ -23,4 +23,10 @@
 #define SW_MOT 4
 #define SW_ROT 5
 
+#define I2C_0_SDA 16
+#define I2C_0_SCL 17
+
+#define I2C_1_SDA 14
+#define I2C_1_SCL 15
+
 #endif
