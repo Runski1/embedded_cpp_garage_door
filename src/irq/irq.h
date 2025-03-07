@@ -10,7 +10,9 @@ enum irq_event {
   ROT_ANTI_CLOCKWISE,
   PRESS_0,
   PRESS_1,
-  PRESS_2
+  PRESS_2,
+  CLICK_MOT,
+  CLICK_ROT
 };
 
 void irq_handler(uint gpio, uint32_t event_mask);
