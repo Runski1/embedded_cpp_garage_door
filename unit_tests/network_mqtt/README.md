@@ -1,4 +1,7 @@
 # README
+
+Most of new features are just added to unit test sourcefile, need to clean things later
+
 1. build and flash
 ```
 mkdir build
