@@ -1,155 +1,163 @@
 #include "hardware/timer.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
+#include <cstdio>
 #include <cstring>
 #include <cyw43.h>
 #include <cyw43_ll.h>
-#include <stdio.h>
-#include <string.h>
+#include <iostream>
 #include <memory>
+#include <stdio.h>
 
 #include "Countdown.h"
 #include "IPStack.h"
 #include "MQTTClient.h"
-#include "pico/cyw43_arch.h"
 #include "cyw43.h"
+#include "pico/cyw43_arch.h"
 
 #define BAUD_RATE 9600
 #define STOP_BITS 1 // for simulator
 // #define STOP_BITS 2 // for real system
 
 #define USE_MQTT
-/* I think all of this should be included in another class, let's call it 
- * ConnManager (name WIP)
- *
- * I have yet no luck with checking WiFi connection status with cyw43.h's
- * int cyw43_wifi_link_status(cyw43_t *self, int itf), cannot link it for 
- * compiler. tried including pico/cyw43_arch.h (and even cyw43.h manually) with 
- * no success. pico_cyw43_arch_lwip_poll is included in CMakeLists.txt target 
- * link libraries, but doesn't help.
- *
- * Retrying connection after failure in IPStack constructor gets hung up on 
- * second try. Might've been a bug I'd created, dunno.
- *
- * Since the connection is established within IPStack constructor, I tried 
- * handling the instance with a smart pointer (I could just create a new 
- * instance if connection fails) but that fucks up MQTT::Client constructor 
- * call. If retry is implemented this way, maybe manual call of IPStack 
- * destructor is needed?
- *
- * Holiday trip happens in kind of a bad time, I really would like to work on 
- * this over the weekend. 
- * */
+//
+// lwIP error codes ${PICO_SDK_PATH}/lib/lwip/src/include/lwip/err.h // TODO
+// error parsing
 
-int mqtt_connect(MQTT::Client<IPStack, Countdown> &client) {
+// TODO Classify this hot pile of garbage
+//  - should add something like inbox for the Class where messages can be copied
+//
+// TODO Connection dropout handling
+// Killed MQTT server, tcp_client_err -14 after a while
+// Then fast loop "Failed to write data -11"
+
+static const char *topic = "test-topic";
+
+int mqtt_connect(MQTT::Client<IPStack, Countdown> &client,
+                 MQTTPacket_connectData &data) {
     printf("MQTT connecting\n");
-    MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
     data.MQTTVersion = 3;
-    data.clientID.cstring = (char *)"PicoW-sample";
+    data.clientID.cstring = (char *)"Garage_door";
     int rc;
     rc = client.connect(data);
+
     if (rc != 0) {
         printf("rc from MQTT connect is %d\n", rc);
+    } else {
+        printf("MQTT connected\n");
     }
-    printf("MQTT connected\n");
     return rc;
 }
 
 void messageArrived(MQTT::MessageData &md) {
     MQTT::Message &message = md.message;
-
     printf("Message arrived: qos %d, retained %d, dup %d, packetid %d\n",
            message.qos, message.retained, message.dup, message.id);
-    printf("Payload %s\n", (char *)message.payload);
+    printf("Payload ");
+    for (int i = 0; i < message.payloadlen; i++) {
+        putchar(((char *)message.payload)[i]);
+    }
+        putchar('\n');
+    // Could copy the payload into recieved msg like
+    // (std::string) remoteCtrl.inbox.assign((char *)message.payload,
+    // message.payloadlen);
 }
 
-static const char *topic = "test-topic";
-
-int main() {
-
-    const uint led_pin = 22;
-    const uint button = 9;
-
-    // Initialize LED pin
-    gpio_init(led_pin);
-    gpio_set_dir(led_pin, GPIO_OUT);
-
-    gpio_init(button);
-    gpio_set_dir(button, GPIO_IN);
-    gpio_pull_up(button);
-
-    // Initialize chosen serial port
-    stdio_init_all();
-
-    printf("\nBoot\n");
-
-    // Connect to WIFI
-
-    // IPStack ipstack("SSID", "PASSWORD");
-    auto ipstack = std::make_shared<IPStack>(NETWORK_SSID, NETWORK_PASSWORD); // fucks up the next call
-    auto client = MQTT::Client<IPStack, Countdown>(ipstack);
-    mqtt_connect(client);
-
-    // lwIP error codes ${PICO_SDK_PATH}/lib/lwip/src/include/lwip/err.h // TODO error parsing
-    int rc = ipstack->connect(SERVER_IP, 1883);
+void open_socket(IPStack &ipstack, MQTT::Client<IPStack, Countdown> &client,
+                 MQTTPacket_connectData &data) {
+    printf("opening socket\n");
+    int rc = ipstack.connect(SERVER_IP, 1883);
     if (rc != 1) {
         // TODO add rc translator
         printf("rc from TCP connect is %d\n", rc);
     }
-
+    mqtt_connect(client, data);
     // MQTT return codes
     // enum returnCode { BUFFER_OVERFLOW = -2, FAILURE = -1, SUCCESS = 0 };
     rc = client.subscribe(topic, MQTT::QOS2, messageArrived);
     if (rc != 0) {
-        printf("rc from MQTT subscribe is %d\n", rc);
+        printf("MQTT client failed to subscribe to topic %s %d\n", topic, rc);
     }
-    printf("MQTT subscribed\n");
+    printf("MQTT client subscribed to topic %s\n", topic);
+}
 
-    auto mqtt_send = make_timeout_time_ms(2000);
+int send_message(MQTT::Client<IPStack, Countdown> &client,
+                 MQTTPacket_connectData &data, std::string &message_payload) {
+    // TODO think if snprintf is the way to go
     int mqtt_qos = 0;
     int msg_count = 0;
+    if (!client.isConnected()) {
+        printf("Not connected...\n");
+        int rc = client.connect(data);
+        if (rc != 0) {
+            printf("rc from MQTT connect is %d\n", rc);
+        }
+    }
+    char buf[100];
+    int rc = 0;
+    MQTT::Message message;
+    message.retained = false;
+    message.dup = false;
+    message.payload = (void *)buf;
+    printf("payload len: %d\n", message.payloadlen);
+    rc = snprintf(buf, sizeof(buf), "Msg nr: %d %s", ++msg_count,
+                  message_payload.c_str());
+    if (rc >= sizeof(buf)) {
+        printf("Message too long, truncated");
+        return -1;
+    }
+    printf("%s\n", buf);
+    message.qos = MQTT::QOS0;
+    message.payloadlen = strlen(buf) + 1;
+    rc = client.publish(topic, message);
+    printf("Publish rc=%d\n", rc);
+    return 0;
+}
+
+int main() {
+
+    // INIT BOARD
+    const uint led_pin = 22;
+    const uint button = 9;
+    gpio_init(led_pin);
+    gpio_set_dir(led_pin, GPIO_OUT);
+    gpio_init(button);
+    gpio_set_dir(button, GPIO_IN);
+    gpio_pull_up(button);
+    stdio_init_all();
+
+    printf("\nBoot\n");
+
+    // INIT NETWORK STACK
+    // IPStack ipstack("SSID", "PASSWORD");
+    IPStack ipstack(NETWORK_SSID, NETWORK_PASSWORD);
+    auto client = MQTT::Client<IPStack, Countdown>(ipstack);
+    MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
+
+    if (ipstack.wifi_is_connected()) {
+        open_socket(ipstack, client, data);
+    }
+
+    auto mqtt_send = make_timeout_time_ms(2000);
+
+    std::string msg_payload = "Hello you dirty dog!";
 
     while (true) {
-        /*
-        int wifi_status = cyw43_wifi_link_status(cyw43_t *self, int itf); // For some reason I cannot link this :O
-        if (wifi_status != 1) { 
-            cyw43_arch_wifi_connect_async(NETWORK_SSID, NETWORK_PASSWORD, 
-                                          CYW43_AUTH_WPA2_AES_PSK);
-        }
-        */
-        /*
-        if (time_reached(mqtt_send)) {
-            mqtt_send = delayed_by_ms(mqtt_send, 2000);
-            if (!client.isConnected()) {
-                printf("Not connected...\n");
-                rc = client.connect(data);
-                if (rc != 0) {
-                    printf("rc from MQTT connect is %d\n", rc);
-                }
+        if (!ipstack.wifi_is_connected()) {
+            ipstack.wifi_reconnect(NETWORK_SSID, NETWORK_PASSWORD);
+            if (ipstack.wifi_is_connected()) {
+                open_socket(ipstack, client, data);
             }
-            */
-        /*
-        char buf[100];
-        int rc = 0;
-        MQTT::Message message;
-        message.retained = false;
-        message.dup = false;
-        message.payload = (void *)buf;
-        printf("payload len: %d\n", message.payloadlen);
+        }
+        if (time_reached(mqtt_send) && client.isConnected() &&
+            msg_payload.length() > 0) {
+            mqtt_send = delayed_by_ms(mqtt_send, 2000);
+            send_message(client, data, msg_payload);
+            msg_payload.clear();
 
-        // Send and receive QoS 0 message
-        sprintf(buf, "Msg nr: %d QoS 0 message", ++msg_count);
-        printf("%s\n", buf);
-        message.qos = MQTT::QOS0;
-        message.payloadlen = strlen(buf) + 1;
-        rc = client.publish(topic, message);
-        printf("Publish rc=%d\n", rc);
-    }
-        */
-        printf("looping\n");
-        sleep_ms(1000);
-        cyw43_arch_poll(); // obsolete? - see below (DONT TOUCH, Chesterton's
-                           // fence)
+            cyw43_arch_poll(); // obsolete? - see below (DONT TOUCH,
+                               // Chesterton's fence)
+        }
         client.yield(100); // socket that client uses calls cyw43_arch_poll()
     }
 }

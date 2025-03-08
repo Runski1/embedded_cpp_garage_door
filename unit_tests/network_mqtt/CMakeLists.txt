@@ -72,7 +72,7 @@ add_executable(${PROJECT_NAME}
         ../../src/network/mqtt/lwipopts.h
         ${MQTT_SOURCES}
 )
-
+set(PICO_STD_LIBCXX ON)
 # Create map/bin/hex/uf2 files
 pico_add_extra_outputs(${PROJECT_NAME})
 
