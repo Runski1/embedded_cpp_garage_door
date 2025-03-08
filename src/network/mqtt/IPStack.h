@@ -17,6 +17,7 @@
 class IPStack {
 public:
     IPStack(const char *ssid, const char *pw);
+    ~IPStack(); // for shared pointer
     int connect(const char *hostname, int port);
     int connect(uint32_t hostname, int port);
     int read(unsigned char *buffer, int len, int timeout);
@@ -40,6 +41,7 @@ private:
     uint16_t wr; // write index
     uint16_t rd; // read index
     bool connected;
+    bool connected_wifi;
 };
 
 
