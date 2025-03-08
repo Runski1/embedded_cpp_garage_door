@@ -35,6 +35,8 @@ void irq_handler(uint gpio, uint32_t event_mask) {
     case BTN_0: btn_handler(PRESS_0); break;
     case BTN_1: btn_handler(PRESS_1); break;
     case BTN_2: btn_handler(PRESS_2); break;
+    case SW_MOT: btn_handler(CLICK_MOT); break;
+    case SW_ROT: btn_handler(CLICK_ROT); break;
   }
 
   return;

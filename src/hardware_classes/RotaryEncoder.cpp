@@ -20,35 +20,3 @@ void RotaryEncoder::print() const {
     printf("A: %d, B: %d\n", a, b);
   }
 }
-
-
-#ifdef ROT_TEST
-
-#include "pico/time.h"
-#include "pico/util/queue.h"
-#include "hardware/gpio.h"
-
-#include "../irq/irq.h"
-#include "../pins.h"
-
-void RotaryEncoder::test() {
-  printf("RotaryEncoder::test\nUses the onboard rotary encoder\n");
-
-  RotaryEncoder rot(BOARD_ROT_A, BOARD_ROT_B);
-
-  irq_event irq;
-  while (true) {
-    while (queue_try_remove(&irq_queue, &irq)) {
-      switch (irq) {
-        case ROT_CLOCKWISE:
-          printf("CLOCKWISE\n");
-          break;
-        case ROT_ANTI_CLOCKWISE:
-          printf("ANTI CLOCKWISE\n");
-          break;
-      }
-    }
-  }
-}
-
-#endif

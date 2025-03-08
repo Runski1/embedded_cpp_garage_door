@@ -3,18 +3,12 @@
 
 #include "GpioPin.h"
 
-// #define BTN_TEST
-
 class Button {
   public:
-    Button(uint pin, bool invert);
+    Button(const uint pin, const bool invert);
     inline bool operator()() const {
       return pin.get();
     };
-
-#ifdef BTN_TEST
-    static void test();
-#endif
 
   private:
     const GpioPin pin;
