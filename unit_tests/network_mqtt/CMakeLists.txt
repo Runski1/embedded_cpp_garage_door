@@ -26,23 +26,22 @@ else()
     message(WARNING "PASSWORD is not set! Using default_password.")
 endif()
 if(DEFINED ENV{MQTT_SERVER_IP})
-    set(SERVER_IP "$ENV{MQTT_SERVER_IP}")
+    set(MQTT_BROKER_IP "$ENV{MQTT_SERVER_IP}")
 else()
-    set(SERVER_IP "asdf")
+    set(MQTT_BROKER_IP "asdf")
     message(WARNING "Broker IP is not set! Using default_password.")
 endif()
-
 # Pass to compiler as preprocessor definitions
 add_compile_definitions(
     NETWORK_SSID="${NETWORK_SSID}"
     NETWORK_PASSWORD="${NETWORK_PASSWORD}"
-    SERVER_IP="${MQTT_SERVER_IP}"
+    SERVER_IP="${MQTT_BROKER_IP}"
 )
 # <----------------------------NETWORK
 
 # Set name of project (as PROJECT_NAME) and C/C   standards
 # DON'T USE WHITESPACE IN PROJECT_NAME
-project(PROJECT_NAME)
+project(mqtt_unit_test)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -71,9 +70,11 @@ add_executable(${PROJECT_NAME}
         ../../src/network/mqtt/IPStack.cpp
         ../../src/network/mqtt/IPStack.h
         ../../src/network/mqtt/lwipopts.h
+        ../../src/network/RemoteCtrl.cpp
+        ../../src/network/RemoteCtrl.h
         ${MQTT_SOURCES}
 )
-
+set(PICO_STD_LIBCXX ON)
 # Create map/bin/hex/uf2 files
 pico_add_extra_outputs(${PROJECT_NAME})
 
@@ -84,6 +85,7 @@ pico_add_extra_outputs(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
         ../../src/network/mqtt
+        ../../src/network/
         ../../src/network/uart
         ../../src/network/paho.mqtt.embedded-c/MQTTPacket/src
         ../../src/network/paho.mqtt.embedded-c/MQTTClient/src
