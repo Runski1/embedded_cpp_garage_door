@@ -12,5 +12,5 @@ mqtt_broker/*
 # minicom log format
 *.cap
 *.txt
-!CMakeLists.txt
+CMakeLists.txt
 

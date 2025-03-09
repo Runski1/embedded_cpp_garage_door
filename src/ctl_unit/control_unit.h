@@ -4,6 +4,10 @@
 #include "../hardware_classes/GpioPin.h"
 #include "../hardware_classes/RotaryEncoder.h"
 #include "../hardware_classes/StepperMotor.h"
+#include "../hardware_classes/Led.h"
+
+#include "../irq/irq.h"
+#include "pico/util/queue.h"
 
 #ifndef STATEMACHINE_H_
 
@@ -26,7 +30,7 @@ opposite direction (stopped during opening→close and vice versa)
 
 class ControlUnit {
 public:
-    ControlUnit(int state_door);
+    ControlUnit(queue_t*, int);
     ControlUnit(ControlUnit &) = delete; // do not copy
 
     int operator()() const;     // returns status of the door
@@ -44,11 +48,15 @@ public:
     void operate(void);     // do stuff based on states
 
 private:
+
     void setsignal(void);   // set a flag for doing stuff
     void action(void);
     void revolve(void);
     void calibrate();
 
+    void DEBUG_revolve(int, bool);
+
+    queue_t* irq_queue;
 
     int state_door;         // 1:closed,2:open,3=still,4=moving,0=maybe block
     bool state_mvdir;       // 1=down, 0=up, 
@@ -60,9 +68,17 @@ private:
     Button sw0;
     Button sw1;
     Button sw2;
+    Button ds_u;    // door switch up
+    Button ds_d;    // door switch down
+
     StepperMotor stp;
 
+    Led d1;
+    Led d2;
+    Led d3;
+
     enum State {BLOCK, CLOSED, OPEN, STILL, MOVING};
+    enum MoveState {UP, DOWN};
 };
 
 #endif
