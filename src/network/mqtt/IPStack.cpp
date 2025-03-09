@@ -158,7 +158,7 @@ void IPStack::tcp_client_err(void *arg, err_t err) {
     // auto state = static_cast<IPStack *>(arg);
     if (err != ERR_ABRT) {
         printf("tcp_client_err %d\n", err);
-        // state->tcp_result(err);
+        // state->connected = false;
     }
 }
 
