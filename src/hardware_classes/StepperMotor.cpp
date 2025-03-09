@@ -1,4 +1,5 @@
 #include <iostream>
+
 #include "GpioPin.h"
 #include "StepperMotor.h"
 #include "../pins.h"
@@ -28,10 +29,13 @@ StepperMotor::StepperMotor() :
 {}
 
 void StepperMotor::step_right() {
-  set_phase((phase + 1) % 8);
+  set_phase(phase + 1);
 }
 
 void StepperMotor::step_left() {
-  set_phase((phase - 1) % 8);
+  set_phase(phase - 1);
 }
 
+uint StepperMotor::get_phase() {
+  return phase;
+}

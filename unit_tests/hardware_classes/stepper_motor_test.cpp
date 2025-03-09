@@ -1,5 +1,4 @@
 #include <iostream>
-#include "pico/time.h"
 #include "pico/util/queue.h"
 
 #include "../../src/irq/irq.h"
@@ -10,7 +9,6 @@ void stepper_motor_test() {
   std::printf("In stepper_motor_test\n");
 
   StepperMotor motor;
-  int sleep_time_ms = 1000;
 
   enum state {LEFT, RIGHT, STOP};
   state state = STOP;
@@ -38,15 +36,15 @@ void stepper_motor_test() {
       case RIGHT:
         // printf("right");
         motor.step_right();
+        std::printf("Phase: %d\n", motor.get_phase());
         break;
       case LEFT:
         // printf("left");
         motor.step_left();
+        std::printf("Phase: %d\n", motor.get_phase());
         break;
       case STOP:
         break;
     }
-
-    sleep_us(WAIT_TIME_US);
   }
 }

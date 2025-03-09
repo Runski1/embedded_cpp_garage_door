@@ -29,7 +29,7 @@ int main() {
   // eeprom_test();
   // button_test();
   // rotary_encoder_test();
-  // stepper_motor_test();
+  stepper_motor_test();
 
   return 0;
 }
