@@ -23,32 +23,17 @@ o Door was earlier stopped by pressing the button → door starts movement to th
 opposite direction (stopped during opening→close and vice versa)
 
 */
-// TODO: here lies the button placeholder
-//#define BUTTON_PLACEHOLDER
-#ifdef BUTTON_PLACEHOLDER
-class Button{
-    public:
-        Button(int pin_num)             {state = 0;pin=pin_num;}
-        bool operator()()               {return state;}
-        void operator()(int newstate)   {state=newstate;}
-        void setstate(bool newstate)    {state=newstate;}
-        bool getstate()                 {return state;}
-    private:
-        bool state;
-        int pin;
-};
-#endif
 
-class StateMachine {
+class ControlUnit {
 public:
-    StateMachine(int state_door);
-    StateMachine(StateMachine &) = delete; // do not copy
+    ControlUnit(int state_door);
+    ControlUnit(ControlUnit &) = delete; // do not copy
 
     int operator()() const;     // returns status of the door
     //void operator()(int);       // set the status of the door
 
-    int getDirection();
-    void setDirection();
+    bool getDirection();
+    void setDirection(bool);
 
     int getStatus() const;
 
