@@ -1,16 +1,24 @@
+/*
+  NOTE:
+  Enabling rotary encoder requires RotaryEncoder to work
+  properly.
+*/
+
 #include <iostream>
-#include "pico/time.h"
 #include "pico/util/queue.h"
 
 #include "../../src/irq/irq.h"
 #include "../../src/pins.h"
 #include "../../src/hardware_classes/StepperMotor.h"
+#include "../../src/hardware_classes/RotaryEncoder.h"
 
-void stepper_motor_test() {
+void stepper_motor_test(bool enable_encoder) {
   std::printf("In stepper_motor_test\n");
 
   StepperMotor motor;
-  int sleep_time_ms = 1000;
+  if (enable_encoder) {
+    RotaryEncoder rot(ROT_A, ROT_B);
+  }
 
   enum state {LEFT, RIGHT, STOP};
   state state = STOP;
@@ -31,6 +39,8 @@ void stepper_motor_test() {
         case PRESS_0: state = RIGHT; break;
         case PRESS_1: state = STOP; break;
         case PRESS_2: state = LEFT; break;
+        case ROT_CLOCKWISE: printf("CLOCKWISE\n"); break;
+        case ROT_ANTI_CLOCKWISE: printf("ANTI-CLOCKWISE\n"); break;
       }
     }
 
@@ -38,15 +48,19 @@ void stepper_motor_test() {
       case RIGHT:
         // printf("right");
         motor.step_right();
+        if (!enable_encoder) {
+          std::printf("Phase: %d\n", motor.get_phase());
+        }
         break;
       case LEFT:
         // printf("left");
         motor.step_left();
+        if (!enable_encoder) {
+          std::printf("Phase: %d\n", motor.get_phase());
+        }
         break;
       case STOP:
         break;
     }
-
-    sleep_us(WAIT_TIME_US);
   }
 }
