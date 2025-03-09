@@ -70,6 +70,8 @@ add_executable(${PROJECT_NAME}
         ../../src/network/mqtt/IPStack.cpp
         ../../src/network/mqtt/IPStack.h
         ../../src/network/mqtt/lwipopts.h
+        ../../src/network/RemoteCtrl.cpp
+        ../../src/network/RemoteCtrl.h
         ${MQTT_SOURCES}
 )
 set(PICO_STD_LIBCXX ON)
@@ -83,6 +85,7 @@ pico_add_extra_outputs(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
         ../../src/network/mqtt
+        ../../src/network/
         ../../src/network/uart
         ../../src/network/paho.mqtt.embedded-c/MQTTPacket/src
         ../../src/network/paho.mqtt.embedded-c/MQTTClient/src

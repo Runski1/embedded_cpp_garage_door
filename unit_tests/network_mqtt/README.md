@@ -37,7 +37,7 @@ EOL
 5. Keeps tcp connection alive by polling and recieves messages posted on 
 6. test-topic, prints them out
 
-Example print:
+Example print: (EDIT print is little outdated)
 ```
 Boot
 Connecting to Wi-Fi...
