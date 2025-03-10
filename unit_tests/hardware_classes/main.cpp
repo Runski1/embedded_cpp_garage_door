@@ -26,7 +26,7 @@ void init() {
 int main() {
   init();
 
-  // eeprom_test();
+  eeprom_test();
   // button_test();
   // rotary_encoder_test();
 
@@ -35,7 +35,7 @@ int main() {
      Stepper motor without rotary encoder (works on its own)
      Prints motor phase values
   */
-  stepper_motor_test(false);
+  // stepper_motor_test(false);
 
 
   /*
