@@ -11,11 +11,16 @@
 #include <pico/time.h>
 #include <string>
 
-RemoteCtrl::RemoteCtrl(const char *ssid, const char *password, const char *ip)
-    : ipstack(ssid, password), ssid(ssid),
-      wifi_pwd(password),
-      client(MQTT::Client<IPStack, Countdown>(ipstack)), topic("test-topic"),
-      data(MQTTPacket_connectData_initializer), connected{false}, broker_ip(ip) {
+#define DEBUG
+
+RemoteCtrl::RemoteCtrl(const char *ssid, const char *password, const char *ip,
+                       void (*command_handler_cb)(const void *msg,
+                                                  const int msg_len))
+    : ipstack(ssid, password),
+      client(MQTT::Client<IPStack, Countdown, 600>(ipstack)),
+      data(MQTTPacket_connectData_initializer), ssid(ssid), wifi_pwd(password),
+      broker_ip(ip), topic("test-topic"), connected{false} {
+    RemoteCtrl::command_handler_cb = command_handler_cb;
     connect();
 };
 
@@ -41,7 +46,13 @@ bool RemoteCtrl::tcp_connect() {
     //      creates TCP control block, callback functions for TCP events and
     //      opens socket connection + connects to the server
     // Returns TCP connection status
+#ifdef DEBUG
+    printf("hello from tcp connect");
+#endif
     printf("Opening TCP connection to %s:%d\n", broker_ip, MQTT_PORT);
+#ifndef DEBUG
+    ipstack.disconnect(); // resetting the connection for reconnect
+#endif
     int rc = ipstack.connect(broker_ip, MQTT_PORT);
     // TODO add rc translator
     if (rc) {
@@ -102,19 +113,18 @@ int RemoteCtrl::publish(const std::string &msg) {
 
 void RemoteCtrl::processMessages() {
     cyw43_arch_poll();
+    if (!connected || !ipstack.tcp_is_connected()) {
+        printf("connection error\n");
+        connect();
+    };
     client.yield(100);
 }
 
 void RemoteCtrl::messageArrived(MQTT::MessageData &md) {
     // Callback function for MQTT::subscribe
-    // TODO Think of a good way to pass incoming messages on, maybe call for
-    // door action directly?
     MQTT::Message &message = md.message;
     printf("Message arrived: qos %d, retained %d, dup %d, packetid %d\n",
            message.qos, message.retained, message.dup, message.id);
     printf("Payload ");
-    for (uint i = 0; i < message.payloadlen; i++) {
-        putchar(((char *)message.payload)[i]);
-    }
-    putchar('\n');
+    command_handler_cb(message.payload, message.payloadlen);
 }

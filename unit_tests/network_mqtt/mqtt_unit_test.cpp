@@ -1,8 +1,18 @@
 #include "RemoteCtrl.h"
-#include <cstring>
 #include <cstdio>
+#include <cstring>
 #include <stdio.h>
 
+void test_msg_callback(const void *payload, const int payloadlen) {
+    for (uint i = 0; i < payloadlen; i++) {
+        putchar(((char *)payload)[i]);
+    }
+    putchar('\n');
+}
+
+// I don't fully understand why static function pointer needed to be initialized 
+// outside the class
+void (*RemoteCtrl::command_handler_cb)(const void *msg, int msg_len) = nullptr;
 
 int main() {
 
@@ -20,7 +30,8 @@ int main() {
     printf("\nBoot\n");
 
     // This bad boi does everything
-    RemoteCtrl remote(NETWORK_SSID, NETWORK_PASSWORD, SERVER_IP);
+    RemoteCtrl remote(NETWORK_SSID, NETWORK_PASSWORD, SERVER_IP,
+                      test_msg_callback);
 
     std::string msg_payload = "Hello you dirty dog!";
 
