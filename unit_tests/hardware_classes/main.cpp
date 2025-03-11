@@ -26,7 +26,7 @@ void init() {
 int main() {
   init();
 
-  eeprom_test();
+  // eeprom_test();
   // button_test();
   // rotary_encoder_test();
 
