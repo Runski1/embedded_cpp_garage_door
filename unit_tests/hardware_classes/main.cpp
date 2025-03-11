@@ -8,6 +8,7 @@
 queue_t irq_queue;
 
 void eeprom_test();
+void led_test();
 void button_test();
 void rotary_encoder_test();
 void stepper_motor_test(bool enable_encoder);
@@ -27,6 +28,7 @@ int main() {
   init();
 
   // eeprom_test();
+  // led_test();
   // button_test();
   // rotary_encoder_test();
 
