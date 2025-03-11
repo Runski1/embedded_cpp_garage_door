@@ -23,6 +23,7 @@ public:
     int read(unsigned char *buffer, int len, int timeout);
     int write(unsigned char *buffer, int len, int timeout);
     int disconnect();
+    inline bool tcp_is_connected() {return connected;};
     bool wifi_is_connected();
     // lwip callback functions
     static err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);

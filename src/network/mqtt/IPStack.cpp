@@ -18,6 +18,7 @@ IPStack::IPStack(const char *ssid, const char *pw)
     cyw43_arch_enable_sta_mode();
 
     printf("Connecting to Wi-Fi...\n");
+    printf("%s, %s\n", ssid, pw);
     if (int rc = cyw43_arch_wifi_connect_timeout_ms(
             ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
         printf("Failed to connect. | %d\n", rc);
@@ -155,10 +156,10 @@ err_t IPStack::tcp_client_poll(void *arg, struct tcp_pcb *tpcb) {
  *            ERR_RST: the connection was reset by the remote host
  */
 void IPStack::tcp_client_err(void *arg, err_t err) {
-    // auto state = static_cast<IPStack *>(arg);
+    auto state = static_cast<IPStack *>(arg);
     if (err != ERR_ABRT) {
         printf("tcp_client_err %d\n", err);
-        // state->connected = false;
+        state->connected = false;
     }
 }
 

@@ -14,7 +14,7 @@
 RemoteCtrl::RemoteCtrl(const char *ssid, const char *password, const char *ip)
     : ipstack(ssid, password), ssid(ssid),
       wifi_pwd(password),
-      client(MQTT::Client<IPStack, Countdown>(ipstack)), topic("test-topic"),
+      client(MQTT::Client<IPStack, Countdown, 600>(ipstack)), topic("test-topic"),
       data(MQTTPacket_connectData_initializer), connected{false}, broker_ip(ip) {
     connect();
 };
@@ -42,6 +42,7 @@ bool RemoteCtrl::tcp_connect() {
     //      opens socket connection + connects to the server
     // Returns TCP connection status
     printf("Opening TCP connection to %s:%d\n", broker_ip, MQTT_PORT);
+    ipstack.disconnect(); // resetting the connection for reconnect
     int rc = ipstack.connect(broker_ip, MQTT_PORT);
     // TODO add rc translator
     if (rc) {
@@ -102,7 +103,9 @@ int RemoteCtrl::publish(const std::string &msg) {
 
 void RemoteCtrl::processMessages() {
     cyw43_arch_poll();
-    client.yield(100);
+    if (!connected || !ipstack.tcp_is_connected() || client.yield(100)) {
+        printf("connection error\n");
+        connect();};
 }
 
 void RemoteCtrl::messageArrived(MQTT::MessageData &md) {

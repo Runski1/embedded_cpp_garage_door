@@ -23,7 +23,7 @@ public:
 
 private:
     IPStack ipstack;
-    MQTT::Client<IPStack, Countdown> client;
+    MQTT::Client<IPStack, Countdown, 600> client;
     MQTTPacket_connectData data;
     bool tcp_connect(); // returns connection status true=connected
     bool mqtt_connect();// returns connection status true=connected
