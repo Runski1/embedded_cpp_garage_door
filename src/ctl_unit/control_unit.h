@@ -1,15 +1,16 @@
 
 #include "pico/stdlib.h"
-#include "../hardware_classes/Button.h"
-#include "../hardware_classes/GpioPin.h"
-#include "../hardware_classes/RotaryEncoder.h"
-#include "../hardware_classes/StepperMotor.h"
-#include "../hardware_classes/Led.h"
+#include "hardware_classes/Button.h"
+#include "hardware_classes/GpioPin.h"
+#include "hardware_classes/RotaryEncoder.h"
+#include "hardware_classes/StepperMotor.h"
+#include "hardware_classes/Led.h"
 
-#include "../irq/irq.h"
+#include "irq/irq.h"
 #include "pico/util/queue.h"
 
-#ifndef STATEMACHINE_H_
+#ifndef CTL_UNIT_H_ 
+#define CTL_UNIT_H_ 
 
 /*
 
@@ -25,7 +26,6 @@ o Door open >> door starts to close
 o Door is current opening or closing → door stops
 o Door was earlier stopped by pressing the button → door starts movement to the
 opposite direction (stopped during opening→close and vice versa)
-
 */
 
 class ControlUnit {
@@ -77,7 +77,7 @@ private:
     Led d2;
     Led d3;
 
-    enum State {BLOCK, CLOSED, OPEN, STILL, MOVING};
+    enum State {BLOCK, CLOSED, OPEN, STILL, MOVING, CALIBRATE};
     enum MoveState {UP, DOWN};
 };
 

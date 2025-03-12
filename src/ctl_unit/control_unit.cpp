@@ -2,14 +2,14 @@
 #include "pico/stdlib.h"
 #include "control_unit.h"
 
-#include "../hardware_classes/Button.h"
-#include "../hardware_classes/GpioPin.h"
-#include "../hardware_classes/RotaryEncoder.h"
-#include "../hardware_classes/StepperMotor.h"
-#include "../hardware_classes/Led.h"
-#include "../pins.h"
+#include "hardware_classes/Button.h"
+#include "hardware_classes/GpioPin.h"
+#include "hardware_classes/RotaryEncoder.h"
+#include "hardware_classes/StepperMotor.h"
+#include "hardware_classes/Led.h"
+#include "pins.h"
 
-#include "../irq/irq.h"
+#include "irq/irq.h"
 #include "pico/util/queue.h"
 
 ControlUnit::ControlUnit 
@@ -33,52 +33,40 @@ int ControlUnit::getStatus(void) const
 {}
 
 void ControlUnit::init()
-{
-}
+{}
 
 void ControlUnit::operate(void)
 {
     if (state_door == MOVING) revolve();
-    /*
-    switch (state_door)
-    {
-        case (BLOCK):
-            // MIGHT BE A BLOCK FOR ERROR STATE
-            break;
-        case (CLOSED):
-            // closed 
-            break;
-        case (OPEN):
-            // open 
-            break;
-        case (STILL):
-            // still
-            break;
-        case (MOVING):
-            // moving 
-            revolve();
-            break;
-    }
-    */
-    
+
     int btn=0;
     bool queue_rm = queue_try_remove(irq_queue, &btn);
 
     switch (btn)
     {
         case irq_event::PRESS_1:
-            action();
+            //action();
+            break;
+
+        case irq_event::PRESS_0:
+            if (state_door == OPEN) break;// avoid hitting the walls
+            state_mvdir = UP;
+            state_door = MOVING;
+            break;
+
+        case irq_event::PRESS_2:
+            if (state_door == CLOSED) break;// avoid hitting the walls
+            state_mvdir = DOWN;
+            state_door = MOVING;
             break;
 
         case irq_event::CLICK_ROT:
             state_door = OPEN;
-            //state_mvdir = DOWN;
             d3(false);d2(true);d1(false);
             break;
 
         case irq_event::CLICK_MOT:
             state_door = CLOSED;
-            //state_mvdir = UP;
             d3(false);d2(true);d1(true);
             break;
     }
@@ -108,7 +96,7 @@ void ControlUnit::action(void)
     else if (state_door == MOVING)
     {
         state_door = STILL;
-        state_mvdir = !state_mvdir;
+        //state_mvdir = !state_mvdir;
         d3(false);d2(true);d1(false);
     }
 
@@ -125,7 +113,12 @@ void ControlUnit::DEBUG_revolve(int AMT, bool DIR_)
     else        for (int i=0; i<AMT; ++i) stp.step_left();
 }
 
-void ControlUnit::calibrate() { status_calibrated = true; };
+void ControlUnit::calibrate()
+{
+    
+}
+
+
 void ControlUnit::setDirection(bool dir)
 {
     state_mvdir=dir;
