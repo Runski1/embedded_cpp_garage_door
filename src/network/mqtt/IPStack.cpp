@@ -45,16 +45,19 @@ IPStack::IPStack(const char *ssid, const char *pw)
 int IPStack::wifi_reconnect(const char *ssid, const char *pw) {
     // For some reason the cyw43 chip need's to be re-initialized before
     // calling cyw43_arch_wifi_connect_timeout_ms again
-    cyw43_arch_deinit();
-    cyw43_arch_init();
+    //cyw43_arch_deinit();
+    //cyw43_arch_init();
     printf("Connecting to wifi SSID:%s\n", ssid);
     cyw43_arch_enable_sta_mode();
-    // Next call hangs if AP is down when first connected
+    sleep_ms(2000);
+    // Next call hangs if AP is down when first connected ???
     if (int rc = cyw43_arch_wifi_connect_timeout_ms(
-            ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
+            ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
+        sleep_ms(2000);
         printf("Failed to connect. | %d\n", rc);
         return rc;
     } else {
+        sleep_ms(2000);
         connected_wifi = true;
         printf("Connected.\n");
         return 0;
