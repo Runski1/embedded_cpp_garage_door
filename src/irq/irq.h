@@ -11,6 +11,7 @@ enum irq_event {
   PRESS_0,
   PRESS_1,
   PRESS_2,
+  DOUBLE_PRESS,
   CLICK_MOT,
   CLICK_ROT
 };
