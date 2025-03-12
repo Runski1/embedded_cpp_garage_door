@@ -16,6 +16,7 @@ queue_t irq_queue;
 
 int main() {
   stdio_init_all();
+  timer_hw->dbgpause =0;
   printf("Starting\n");
 
   queue_init(&irq_queue, sizeof(int), 1000);

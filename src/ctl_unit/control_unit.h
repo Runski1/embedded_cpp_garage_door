@@ -33,16 +33,13 @@ public:
     ControlUnit(queue_t*, int);
     ControlUnit(ControlUnit &) = delete; // do not copy
 
-    int operator()() const;     // returns status of the door
+    //int operator()() const;     // returns status of the door
     //void operator()(int);       // set the status of the door
 
-    bool getDirection();
-    void setDirection(bool);
+    //int getStatus() const;
 
-    int getStatus() const;
-
-    bool getError();
-    void setError();
+    //bool getError();
+    //void setError();
 
     void init(void);
     void operate(void);     // do stuff based on states
@@ -58,12 +55,28 @@ private:
 
     queue_t* irq_queue;
 
-    int state_door;         // 1:closed,2:open,3=still,4=moving,0=maybe block
-    bool state_mvdir;       // 1=down, 0=up, 
-    bool status_calibrated; // door status
-    bool status_error;      // error
+    /*
+    typedef gen_state {
+        int state_door;
+        bool state_mvdir;
+        bool status_calibrated;
+        bool status_error;
+    } stat;
+    */
 
-    bool signal; 
+    struct gen_state 
+    {
+        int door;
+        bool mvdir;
+        bool calibrated;
+        bool error;
+        int spd_clock;
+        int spd_cclock;
+    } stat;
+
+    Led d1;
+    Led d2;
+    Led d3;
 
     Button sw0;
     Button sw1;
@@ -72,10 +85,7 @@ private:
     Button ds_d;    // door switch down
 
     StepperMotor stp;
-
-    Led d1;
-    Led d2;
-    Led d3;
+    RotaryEncoder rt;
 
     enum State {BLOCK, CLOSED, OPEN, STILL, MOVING, CALIBRATE};
     enum MoveState {UP, DOWN};
