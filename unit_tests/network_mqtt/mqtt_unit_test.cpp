@@ -1,6 +1,8 @@
 #include "RemoteCtrl.h"
 #include <cstdio>
 #include <cstring>
+#include <hardware/timer.h>
+#include <pico/time.h>
 #include <stdio.h>
 
 void test_msg_callback(const void *payload, const int payloadlen) {
@@ -10,7 +12,7 @@ void test_msg_callback(const void *payload, const int payloadlen) {
     putchar('\n');
 }
 
-// I don't fully understand why static function pointer needed to be initialized 
+// I don't fully understand why static function pointer needed to be initialized
 // outside the class
 void (*RemoteCtrl::command_handler_cb)(const void *msg, int msg_len) = nullptr;
 
@@ -33,16 +35,27 @@ int main() {
     RemoteCtrl remote(NETWORK_SSID, NETWORK_PASSWORD, SERVER_IP,
                       test_msg_callback);
 
+#ifdef DEBUG
     std::string msg_payload = "Hello you dirty dog!";
+    absolute_time_t debugtimer = make_timeout_time_ms(5000);
+    int dbg_counter = 0;
+#endif
 
     while (true) {
-        if (!remote.is_connected()) {
-            remote.connect();
-        }
-        if (remote.is_connected() && msg_payload.length() > 0) {
-            remote.publish(msg_payload);
-            msg_payload.clear();
-        }
+
         remote.processMessages();
+#ifdef DEBUG
+        if (time_reached(debugtimer)) {
+            if (remote.is_connected() && msg_payload.length() > 0) {
+                remote.publish(msg_payload + " " + std::to_string(dbg_counter));
+                //msg_payload.clear();
+            }
+            printf("%d --------------------------------------------------\n",
+                   ++dbg_counter);
+            printf("WIFI: %d\nTCP: %d\nMQTT: %d\n", remote.get_wifi_status(),
+                   remote.get_tcp_status(), remote.get_mqtt_status());
+            debugtimer = make_timeout_time_ms(5000);
+        }
+#endif
     }
 }

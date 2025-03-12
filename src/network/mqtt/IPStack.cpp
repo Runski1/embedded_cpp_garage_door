@@ -1,24 +1,37 @@
 //
 // Created by Keijo Länsikunnas on 12.2.2024.
+// Modified by Matias Ruonala 11.3.2025
+//
 //
 #include "IPStack.h"
 #include "pico/time.h"
 #include <cstring>
+#include <cyw43.h>
+#include <hardware/timer.h>
 
 #define DUMP_BYTES(A, B)                                                       \
     {                                                                          \
     }
+#define WIFI_RETRIES 3
 
 IPStack::IPStack(const char *ssid, const char *pw)
-    : count{0}, wr{0}, rd{0}, connected{false}, connected_wifi{false} {
+    : count{0}, wr{0}, rd{0}, tcp_pcb(nullptr), connected{false},
+      connected_wifi{false} {
     if (cyw43_arch_init()) {
         printf("failed to initialise\n");
         return;
     }
     cyw43_arch_enable_sta_mode();
-
-    printf("Connecting to Wi-Fi...\n");
-    printf("%s, %s\n", ssid, pw);
+    int retries = 0;
+    while (retries < WIFI_RETRIES && wifi_reconnect(ssid, pw) != 0) {
+        retries++;
+    }
+    /*
+     * If AP is shut down when Pico is booted, this call hangs forever
+    instead
+     * of returning after timeout
+     * ???
+     *
     if (int rc = cyw43_arch_wifi_connect_timeout_ms(
             ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
         printf("Failed to connect. | %d\n", rc);
@@ -26,14 +39,15 @@ IPStack::IPStack(const char *ssid, const char *pw)
         connected_wifi = true;
         printf("Connected.\n");
     }
+    */
 }
 
 int IPStack::wifi_reconnect(const char *ssid, const char *pw) {
-    // For some reason the cyw43 chip need's to be re-initialized before calling 
-    // cyw43_arch_wifi_connect_timeout_ms again
-    printf("retrying wifi connection\n");
+    // For some reason the cyw43 chip need's to be re-initialized before
+    // calling cyw43_arch_wifi_connect_timeout_ms again
     cyw43_arch_deinit();
     cyw43_arch_init();
+    printf("Connecting to wifi SSID:%s\n", ssid);
     cyw43_arch_enable_sta_mode();
     if (int rc = cyw43_arch_wifi_connect_timeout_ms(
             ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
@@ -46,7 +60,7 @@ int IPStack::wifi_reconnect(const char *ssid, const char *pw) {
     }
 }
 
-bool IPStack::wifi_is_connected(){ return connected_wifi; }
+bool IPStack::wifi_is_connected() { return connected_wifi; }
 
 int IPStack::connect(uint32_t hostname, int port) { return ERR_ARG; }
 
@@ -57,11 +71,13 @@ int IPStack::connect(const char *hostname, int port) {
         return ERR_ARG;
     }
     // open a socket connection
-    printf("Connecting to %s port %u\n", ip4addr_ntoa(&remote_addr), port);
+    printf("Creating PCB\n");
     tcp_pcb = tcp_new_ip_type(IP_GET_TYPE(remote_addr));
     if (!tcp_pcb) {
         printf("failed to create pcb\n");
         return ERR_MEM;
+    } else {
+        printf("PCB created\n");
     }
 
     tcp_arg(tcp_pcb, this);
@@ -70,11 +86,12 @@ int IPStack::connect(const char *hostname, int port) {
     tcp_recv(tcp_pcb, IPStack::tcp_client_recv);
     tcp_err(tcp_pcb, IPStack::tcp_client_err);
 
-    // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure
-    // correct locking. You can omit them if you are in a callback from lwIP.
-    // Note that when using pico_cyw_arch_poll these calls are a no-op and can
-    // be omitted, but it is a good practice to use them in case you switch the
-    // cyw43_arch type later.
+    // cyw43_arch_lwip_begin/end should be used around calls into lwIP to
+    // ensure correct locking. You can omit them if you are in a callback
+    // from lwIP. Note that when using pico_cyw_arch_poll these calls are a
+    // no-op and can be omitted, but it is a good practice to use them in
+    // case you switch the cyw43_arch type later.
+    printf("Connecting to the server.\n");
     cyw43_arch_lwip_begin();
     err_t err =
         tcp_connect(tcp_pcb, &remote_addr, port, IPStack::tcp_client_connected);
@@ -83,18 +100,18 @@ int IPStack::connect(const char *hostname, int port) {
     return err;
 }
 
-/** Function prototype for tcp sent callback functions. Called when sent data
- * has been acknowledged by the remote side. Use it to free corresponding
- * resources. This also means that the pcb has now space available to send new
- * data.
+/** Function prototype for tcp sent callback functions. Called when sent
+ * data has been acknowledged by the remote side. Use it to free
+ * corresponding resources. This also means that the pcb has now space
+ * available to send new data.
  *
  * @param arg Additional argument to pass to the callback function (@see
  * tcp_arg())
  * @param tpcb The connection pcb for which data has been acknowledged
  * @param len The amount of bytes acknowledged
  * @return ERR_OK: try to send some data by calling tcp_output
- *            Only return ERR_ABRT if you have called tcp_abort from within the
- *            callback function!
+ *            Only return ERR_ABRT if you have called tcp_abort from within
+ * the callback function!
  */
 err_t IPStack::tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
     // auto state = static_cast<IPStack *>(arg);
@@ -103,16 +120,16 @@ err_t IPStack::tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
     return ERR_OK;
 }
 
-/** Function prototype for tcp connected callback functions. Called when a pcb
- * is connected to the remote side after initiating a connection attempt by
- * calling tcp_connect().
+/** Function prototype for tcp connected callback functions. Called when a
+ * pcb is connected to the remote side after initiating a connection attempt
+ * by calling tcp_connect().
  *
  * @param arg Additional argument to pass to the callback function (@see
  * tcp_arg())
  * @param tpcb The connection pcb which is connected
  * @param err An unused error code, always ERR_OK currently ;-) @todo!
- *            Only return ERR_ABRT if you have called tcp_abort from within the
- *            callback function!
+ *            Only return ERR_ABRT if you have called tcp_abort from within
+ * the callback function!
  *
  * @note When a connection attempt fails, the error callback is currently
  * called!
@@ -128,15 +145,15 @@ err_t IPStack::tcp_client_connected(void *arg, struct tcp_pcb *tpcb,
     return ERR_OK;
 }
 
-/** Function prototype for tcp poll callback functions. Called periodically as
- * specified by @see tcp_poll.
+/** Function prototype for tcp poll callback functions. Called periodically
+ * as specified by @see tcp_poll.
  *
  * @param arg Additional argument to pass to the callback function (@see
  * tcp_arg())
  * @param tpcb tcp pcb
  * @return ERR_OK: try to send some data by calling tcp_output
- *            Only return ERR_ABRT if you have called tcp_abort from within the
- *            callback function!
+ *            Only return ERR_ABRT if you have called tcp_abort from within
+ * the callback function!
  */
 err_t IPStack::tcp_client_poll(void *arg, struct tcp_pcb *tpcb) {
     // auto state = static_cast<IPStack *>(arg);
@@ -147,7 +164,8 @@ err_t IPStack::tcp_client_poll(void *arg, struct tcp_pcb *tpcb) {
 /** Function prototype for tcp error callback functions. Called when the pcb
  * receives a RST or is unexpectedly closed for any other reason.
  *
- * @note The corresponding pcb is already freed when this callback is called!
+ * @note The corresponding pcb is already freed when this callback is
+ * called!
  *
  * @param arg Additional argument to pass to the callback function (@see
  * tcp_arg())
@@ -157,22 +175,20 @@ err_t IPStack::tcp_client_poll(void *arg, struct tcp_pcb *tpcb) {
  */
 void IPStack::tcp_client_err(void *arg, err_t err) {
     auto state = static_cast<IPStack *>(arg);
-    if (err != ERR_ABRT) {
-        printf("tcp_client_err %d\n", err);
-        state->connected = false;
-    }
+    printf("tcp_client_err %d\n", err);
+    state->connected = false;
 }
 
-/** Function prototype for tcp receive callback functions. Called when data has
- * been received.
+/** Function prototype for tcp receive callback functions. Called when data
+ * has been received.
  *
  * @param arg Additional argument to pass to the callback function (@see
  * tcp_arg())
  * @param tpcb The connection pcb which received data
  * @param p The received data (or NULL when the connection has been closed!)
  * @param err An error code if there has been an error receiving
- *            Only return ERR_ABRT if you have called tcp_abort from within the
- *            callback function!
+ *            Only return ERR_ABRT if you have called tcp_abort from within
+ * the callback function!
  */
 err_t IPStack::tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
                                err_t err) {
@@ -182,8 +198,9 @@ err_t IPStack::tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
         return ERR_OK;
     }
     // this method is callback from lwIP, so cyw43_arch_lwip_begin is not
-    // required, however you can use this method to cause an assertion in debug
-    // mode, if this method is called when cyw43_arch_lwip_begin IS needed
+    // required, however you can use this method to cause an assertion in
+    // debug mode, if this method is called when cyw43_arch_lwip_begin IS
+    // needed
     cyw43_arch_lwip_check();
     if (p->tot_len > 0) {
 #if 0
@@ -214,19 +231,19 @@ err_t IPStack::tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
                 state->wr = 0; // start next copy from beginning
             }
             state->count += first_copy; // increment count by copied bytes
-            // printf("tot:%d, fc: %d, bc: %d, wr:%d\n", p->tot_len, first_copy,
-            // bytes_to_copy, state->wr);
+            // printf("tot:%d, fc: %d, bc: %d, wr:%d\n", p->tot_len,
+            // first_copy, bytes_to_copy, state->wr);
         }
         state->wr += pbuf_copy_partial(p, state->buffer + state->wr,
                                        bytes_to_copy, first_copy);
-        state->wr %= BUF_SIZE; // wrap over
-        state->count +=
-            bytes_to_copy; // increment count by the rest of the copied bytes
+        state->wr %= BUF_SIZE;         // wrap over
+        state->count += bytes_to_copy; // increment count by the rest of the
+                                       // copied bytes
 
         tcp_recved(tpcb, p->tot_len);
     }
-    pbuf_free(p); // can we omit this call instead of dropping bytes to save the
-                  // buffer for copying the rest later?
+    pbuf_free(p); // can we omit this call instead of dropping bytes to save
+                  // the buffer for copying the rest later?
 
     return ERR_OK;
 }
@@ -268,11 +285,11 @@ int IPStack::read(unsigned char *buffer, int len, int timeout) {
 
 int IPStack::write(unsigned char *buffer, int len, int timeout) {
     int rv = len;
-    // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure
-    // correct locking. You can omit them if you are in a callback from lwIP.
-    // Note that when using pico_cyw_arch_poll these calls are a no-op and can
-    // be omitted, but it is a good practice to use them in case you switch the
-    // cyw43_arch type later.
+    // cyw43_arch_lwip_begin/end should be used around calls into lwIP to
+    // ensure correct locking. You can omit them if you are in a callback
+    // from lwIP. Note that when using pico_cyw_arch_poll these calls are a
+    // no-op and can be omitted, but it is a good practice to use them in
+    // case you switch the cyw43_arch type later.
     cyw43_arch_lwip_begin();
 
     err_t err = tcp_write(tcp_pcb, buffer, len, TCP_WRITE_FLAG_COPY);
@@ -280,9 +297,9 @@ int IPStack::write(unsigned char *buffer, int len, int timeout) {
         printf("Failed to write data %d\n", err);
         rv = -1;
     }
-    // headers suggest that this should be called to make sure that data is sent
-    // right away however there is TCB_WRITE_FLAG_MORE that possibly indicates
-    // the same thing??
+    // headers suggest that this should be called to make sure that data is
+    // sent right away however there is TCB_WRITE_FLAG_MORE that possibly
+    // indicates the same thing??
     if (tcp_output(tcp_pcb) != ERR_OK) {
         // failed! What should I do now?
         rv = -2;
