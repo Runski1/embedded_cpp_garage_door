@@ -49,6 +49,7 @@ int IPStack::wifi_reconnect(const char *ssid, const char *pw) {
     cyw43_arch_init();
     printf("Connecting to wifi SSID:%s\n", ssid);
     cyw43_arch_enable_sta_mode();
+    // Next call hangs if AP is down when first connected
     if (int rc = cyw43_arch_wifi_connect_timeout_ms(
             ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
         printf("Failed to connect. | %d\n", rc);

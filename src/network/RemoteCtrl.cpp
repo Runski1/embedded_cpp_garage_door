@@ -164,6 +164,7 @@ void RemoteCtrl::processMessages() {
         mqtt_status = false;
         if (!get_wifi_status()) {
             printf("Not connected to wifi\n");
+            // Hang somewhere here, race condition?
             set_tcp_status(false);
         }
         if (get_wifi_status()) {
