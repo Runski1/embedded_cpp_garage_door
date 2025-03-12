@@ -38,6 +38,9 @@ void button_test() {
           std::printf("PRESS_2\n");
           gpio_put(LED_2, 1);
           break;
+        case DOUBLE_PRESS:
+          std::printf("DOUBLE_PRESS\n");
+          break;
         case CLICK_MOT:
           std::printf("CLICK_MOT\n");
           break;
