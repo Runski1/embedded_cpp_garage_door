@@ -1,6 +1,15 @@
-
+# Set minimum required version of CMake
 cmake_minimum_required(VERSION 3.6)
-include($ENV{PICO_SDK_PATH}/pico_sdk_init.cmake)
+# Set board type because we are building for PicoW
+set(PICO_BOARD pico_w)
+
+# Please let cmake write compile_commands.json for my LSP - Matias
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Include build functions from Pico SDK
+include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+
+
 
 # NETWORK ------------------------> 
 if(DEFINED ENV{SSID})
@@ -31,31 +40,26 @@ add_compile_definitions(
 )
 # <----------------------------NETWORK
 
-set(MQTT_BROKER_IP "192.168.1.54")
-
-set(PICO_BOARD pico_w)
+# Set name of project (as PROJECT_NAME) and C/C   standards
+# DON'T USE WHITESPACE IN PROJECT_NAME
+project(garage-door)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
-project(main C CXX ASM)
 
+# Creates a pico-sdk subdirectory in our project for the libraries
 pico_sdk_init()
 
-message(STATUS "Project root: ${CMAKE_SOURCE_DIR}")
-message(STATUS "NET\n")
-message(STATUS "NETWORK_SSID:\t${NETWORK_SSID}")
-message(STATUS "NETWORK_PASSWORD:\t${NETWORK_PASSWORD}")
-message(STATUS "SERVER_IP:\t${SERVER_IP}")
-message(STATUS "TEN\n\n")
+#add_compile_definitions(MQTTCLIENT_QOS2=1)
 
 add_compile_options(-Wall
         -Wno-format          # int != int32_t as far as the compiler is concerned because gcc has int32_t as long int
         -Wno-unused-function # we have some for the docs that aren't called
         -Wno-maybe-uninitialized
-        -O0
 )
-
 file(GLOB MQTT_SOURCES "src/network/paho.mqtt.embedded-c/MQTTPacket/src/*.c")
 
+# Tell CMake where to find the executable source file
+# USE RELATIVE PATHS
 add_executable(${PROJECT_NAME}
     # CTL
     src/main.cpp
@@ -71,6 +75,9 @@ add_executable(${PROJECT_NAME}
     src/hardware_classes/StepperMotor.cpp
     
     # NET
+    src/network_config.h
+    src/hardware_classes/Eeprom.h
+    src/hardware_classes/Eeprom.cpp
     src/network/uart/PicoUart.cpp
     src/network/uart/PicoUart.h
     src/network/uart/RingBuffer.cpp
@@ -83,20 +90,33 @@ add_executable(${PROJECT_NAME}
     src/network/RemoteCtrl.cpp
     src/network/RemoteCtrl.h
 
+    # USER INPUT
+    src/usr_input/UserInput.h
+    src/usr_input/UserInput.cpp
+
     # DEPS
     ${MQTT_SOURCES}
 )
-target_include_directories(${PROJECT_NAME}
-        PRIVATE 
-        ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/src/network/mqtt
-        ${CMAKE_SOURCE_DIR}/src/network/
-        ${CMAKE_SOURCE_DIR}/src/network/uart
-        ${CMAKE_SOURCE_DIR}/src/network/paho.mqtt.embedded-c/MQTTPacket/src
-        ${CMAKE_SOURCE_DIR}/src/network/paho.mqtt.embedded-c/MQTTClient/src
+set(PICO_STD_LIBCXX ON)
+# Create map/bin/hex/uf2 files
+pico_add_extra_outputs(${PROJECT_NAME})
+
+# this adds a post build command that tries to copy uf2 to Pico
+#add_custom_command(TARGET ${PROJECT_NAME}
+#        POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.uf2 d: )
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+        src
+        src/network/mqtt
+        src/network/
+        src/network/uart
+        src/network/paho.mqtt.embedded-c/MQTTPacket/src
+        src/network/paho.mqtt.embedded-c/MQTTClient/src
 )
 
 target_link_libraries(${PROJECT_NAME} 
+        pico_stdio
         pico_stdlib
         hardware_pwm
         hardware_gpio
@@ -106,7 +126,6 @@ target_link_libraries(${PROJECT_NAME}
         #pico_stdio
 )
 
-pico_add_extra_outputs(${PROJECT_NAME})
 pico_enable_stdio_usb(${PROJECT_NAME} 0)
 pico_enable_stdio_uart(${PROJECT_NAME} 1)
 

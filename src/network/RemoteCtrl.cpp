@@ -6,6 +6,8 @@
 #include "IPStack.h"
 #include "MQTTClient.h"
 #include "MQTTConnect.h"
+#include "../usr_input/UserInput.h"
+#include "memory"
 #include "pico/types.h"
 #include <cstdint>
 #include <cstdio>
@@ -18,11 +20,10 @@
 #include <pico/time.h>
 #include <string>
 
-// THE POINTER NEEDS TO BE DEFINED GLOBALLY
-void (*RemoteCtrl::command_handler_cb)(const void *msg, int msg_len) = nullptr;
+void (*RemoteCtrl::command_handler_cb)(const void *msg, const int msg_len) = nullptr;
 
-RemoteCtrl::RemoteCtrl(const char *wifi_ssid, const char *wifi_pwd, const char *ip,
-                       const uint16_t port,
+RemoteCtrl::RemoteCtrl(const char *wifi_ssid, const char *wifi_pwd,
+                       const char *ip, const uint16_t port,
                        void (*command_handler_cb)(const void *msg,
                                                   const int msg_len))
     : mqtt_status{false}, tcp_status{false}, wifi_status{false},
@@ -30,8 +31,62 @@ RemoteCtrl::RemoteCtrl(const char *wifi_ssid, const char *wifi_pwd, const char *
       client(MQTT::Client<IPStack, Countdown, 100>(ipstack)), broker_ip(ip),
       data(MQTTPacket_connectData_initializer), port(port), topic("test-topic"),
       reconnect_timer_ms(make_timeout_time_ms(RECONNECT_TIMEOUT)) {
-    RemoteCtrl::command_handler_cb = command_handler_cb;
+    this->command_handler_cb = command_handler_cb;
     connect();
+};
+
+std::unique_ptr<RemoteCtrl> make_RemoteCtrl(std::shared_ptr<Eeprom> eeprom,
+                void (*msg_handler_cb)(const void *msg, const int msg_len)) {
+    network_config network = eeprom->read_network();
+    printf("Current network settings:\n"
+           "SSID: %s\n"
+           "Broker IP: %s\n"
+           "Port: %d\n"
+           "Press any key to reconfigure\n",
+           network.ssid, network.broker_ip, network.port);
+
+    // 5sec timer to input anything
+    absolute_time_t timeout = make_timeout_time_ms(5000);
+
+    if (getchar_timeout_us(timeout) != PICO_ERROR_TIMEOUT) {
+        std::cout << "Configuration: <Enter>" << std::endl;
+        std::cout << "Wifi SSID: <" << network.ssid << ">" << std::endl;
+
+        while (!UserInput::get_validated_input(network.ssid,
+                                               sizeof(network.ssid))) {
+        }
+        std::cout << "Password: <" << network.ssid << ">" << std::endl;
+
+        while (
+            !UserInput::get_validated_input(network.pwd, sizeof(network.pwd))) {
+        }
+        std::cout << "MQTT Broker IP: <" << network.broker_ip << ">"
+                  << std::endl;
+
+        while (!UserInput::get_validated_input(network.broker_ip,
+                                               sizeof(network.broker_ip))) {
+        }
+
+        std::cout << "Broker Port: <1883>" << std::endl;
+        std::string input = UserInput::read_input();
+        if (input.empty()) {
+            input = "1883";
+        }
+        std::istringstream stream(input);
+        int int_port;
+        stream >> int_port;
+        if (stream.fail() || int_port < 0 || int_port > 65535) {
+            std::cout << "Bad input! Using default port" << std::endl;
+            int_port = 1883;
+        }
+        network.port = int_port;
+        
+
+        eeprom->write_network(&network);
+    }
+    return std::make_unique<RemoteCtrl>(network.ssid, network.pwd,
+                                        network.broker_ip, network.port,
+                                        msg_handler_cb);
 };
 
 bool RemoteCtrl::get_wifi_status() {
