@@ -13,35 +13,22 @@
     {                                                                          \
     }
 #define WIFI_RETRIES 3
-
 IPStack::IPStack(const char *ssid, const char *pw)
     : count{0}, wr{0}, rd{0}, tcp_pcb(nullptr), connected{false},
       connected_wifi{false} {
     if (cyw43_arch_init()) {
         printf("failed to initialise\n");
         return;
-    }
-    cyw43_arch_enable_sta_mode();
-    int retries = 0;
-    while (retries < WIFI_RETRIES && wifi_reconnect(ssid, pw) != 0) {
-        retries++;
-    }
-    /*
-     * If AP is shut down when Pico is booted, this call hangs forever
-    instead
-     * of returning after timeout
-     * ???
-     *
-
-    printf("Connecting to Wi-Fi\n");
-    */
-}
+    } }
 
 int IPStack::wifi_reconnect(const char *ssid, const char *pw) {
     // For some reason the cyw43 chip need's to be re-initialized before
     // calling cyw43_arch_wifi_connect_timeout_ms again
     cyw43_arch_deinit();
-    cyw43_arch_init();
+    sleep_ms(500);
+    if(cyw43_arch_init()) {
+        printf("cyw43_arch_init() failed\n");
+    }
     printf("Connecting to wifi SSID:%s\n", ssid);
     cyw43_arch_enable_sta_mode();
     // Next call hangs if AP is down when first connected
