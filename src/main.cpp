@@ -37,15 +37,15 @@ int main() {
 
     /// test messsage to send and recieve
     std::string msg_payload = "Hello you dirty dog!";
-    absolute_time_t debugtimer = make_timeout_time_ms(5000);
+    absolute_time_t debugtimer = make_timeout_time_ms(30000);
     int dbg_counter = 0;
 
 
     for (;;) {
         // netctl.processMessages();
         stm.operate();
+        remote->poll(); // should be called within stm.operate()
         if (time_reached(debugtimer)) {
-        remote->processMessages(); // should be called within stm.operate()
             if (remote->is_connected() && msg_payload.length() > 0) {
                 remote->publish(msg_payload + " " +
                                 std::to_string(++dbg_counter));

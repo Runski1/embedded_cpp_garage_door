@@ -2,11 +2,12 @@
 // Created By Matias Ruonala on 09.03.2025
 
 #include "RemoteCtrl.h"
+#include "../network_config.h"
+#include "../usr_input/UserInput.h"
 #include "Countdown.h"
 #include "IPStack.h"
 #include "MQTTClient.h"
 #include "MQTTConnect.h"
-#include "../usr_input/UserInput.h"
 #include "memory"
 #include "pico/types.h"
 #include <cstdint>
@@ -20,22 +21,26 @@
 #include <pico/time.h>
 #include <string>
 
-void (*RemoteCtrl::command_handler_cb)(const void *msg, const int msg_len) = nullptr;
+void (*RemoteCtrl::command_handler_cb)(const void *msg,
+                                       const int msg_len) = nullptr;
 
 RemoteCtrl::RemoteCtrl(const char *wifi_ssid, const char *wifi_pwd,
                        const char *ip, const uint16_t port,
                        void (*command_handler_cb)(const void *msg,
                                                   const int msg_len))
     : mqtt_status{false}, tcp_status{false}, wifi_status{false},
-      wifi_ssid(wifi_ssid), wifi_pwd(wifi_pwd), ipstack(wifi_ssid, wifi_pwd),
-      client(MQTT::Client<IPStack, Countdown, 100>(ipstack)), broker_ip(ip),
-      data(MQTTPacket_connectData_initializer), port(port), topic("test-topic"),
+      wifi_ssid(wifi_ssid), wifi_pwd(wifi_pwd), broker_ip(ip),
+      ipstack(wifi_ssid, wifi_pwd),
+      client(MQTT::Client<IPStack, Countdown, 100>(ipstack)),
+      data(MQTTPacket_connectData_initializer), port(port),
+      topic("garage/door/command"),
       reconnect_timer_ms(make_timeout_time_ms(RECONNECT_TIMEOUT)) {
     this->command_handler_cb = command_handler_cb;
     connect();
 };
 
-std::unique_ptr<RemoteCtrl> make_RemoteCtrl(std::shared_ptr<Eeprom> eeprom,
+std::unique_ptr<RemoteCtrl>
+make_RemoteCtrl(std::shared_ptr<Eeprom> eeprom,
                 void (*msg_handler_cb)(const void *msg, const int msg_len)) {
     network_config network = eeprom->read_network();
     printf("Current network settings:\n"
@@ -80,7 +85,6 @@ std::unique_ptr<RemoteCtrl> make_RemoteCtrl(std::shared_ptr<Eeprom> eeprom,
             int_port = 1883;
         }
         network.port = int_port;
-        
 
         eeprom->write_network(&network);
     }
@@ -104,43 +108,13 @@ bool RemoteCtrl::connect() {
     // Wrapper function for tcp, mqtt and wifi connecting methods
     // Can be spam called
     //
-    // NOTE: wifi_status doesn't get updated after initial connection.
-    // Problem is that when WiFi link is down, TCP doesn't send keep alive
-    // messages and then tcp_client_err doesn't get triggered (the current way
-    // to detect disconnect) Sending an MQTT message would trigger it, causing
-    // connection retry to happen. However that doesn't update wifi_status. Best
-    // way would be polling cyw43 chip but I have not been able to do that. FAKE
-    // NEWS
-    //
-    /*
     int retries = 0;
-    while (retries < 3 && !is_connected()) {
-    */
-    printf("Trying to connect\n");
-    if (!get_wifi_status()) {
-        printf("Wifi status: %d\n", get_wifi_status());
+    while (retries < 4 && !is_connected()) {
+        printf("%d Trying to connect ---------\n", ++retries);
         ipstack.wifi_reconnect(wifi_ssid, wifi_pwd);
-    }
-    if (!get_tcp_status()) {
         tcp_connect();
-    }
-    if (!get_mqtt_status() && get_tcp_status()) {
         mqtt_connect();
     }
-    /*
-    }
-    /*
-    if (!wifi_status) {
-        ipstack.wifi_reconnect(ssid, wifi_pwd);
-    } else {
-        if (!tcp_status && get_wifi_status()) {
-            tcp_connect();
-        }
-        if (!mqtt_status && get_tcp_status()) {
-            mqtt_connect();
-        }
-    }
-    */
     return is_connected();
 }
 
@@ -151,6 +125,7 @@ bool RemoteCtrl::tcp_connect() {
     // Returns TCP connection status
     printf("Opening TCP connection to %s:%d\n", broker_ip, port);
     ipstack.disconnect();
+    printf("Opening TCP connection to %s:%d\n", broker_ip, port);
     int rc = ipstack.connect(broker_ip, port);
     // TODO add rc translator
     if (rc) {
@@ -195,7 +170,8 @@ bool RemoteCtrl::is_connected() {
     return (get_wifi_status() && get_tcp_status() && get_mqtt_status());
 }
 
-int RemoteCtrl::publish(const std::string &msg) {
+int RemoteCtrl::publish(const std::string &msg, bool status) {
+    const char *topic = status ? "garage/door/status" : "garage/door/response";
     char buf[100] = {'\0'};
     int rc = 0;
     MQTT::Message message;
@@ -217,23 +193,14 @@ int RemoteCtrl::publish(const std::string &msg) {
     return rc;
 }
 
-void RemoteCtrl::processMessages() {
-
+void RemoteCtrl::poll() {
     cyw43_arch_poll(); // Chesterton's fence
     if (time_reached(reconnect_timer_ms) && !is_connected()) {
-        printf("Not connected to MQTT broker\n");
+        printf("MQTT connection lost\n");
         mqtt_status = false;
-        if (!get_wifi_status()) {
-            printf("Not connected to wifi\n");
-            // Hang somewhere here, race condition?
-            set_tcp_status(false);
-        }
-        if (get_wifi_status()) {
-            printf("Reconnecting to MQTT broker\n");
-            connect();
-        }
+        connect();
         reconnect_timer_ms = make_timeout_time_ms(RECONNECT_TIMEOUT);
-    } else if (is_connected()) {
+    } else {
         client.yield(100); // Isn't reliable to follow MQTT status
     }
 }

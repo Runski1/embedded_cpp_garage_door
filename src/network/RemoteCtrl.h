@@ -19,7 +19,7 @@
 #define DEVELOPMENT
 
 #ifdef DEVELOPMENT
-#define RECONNECT_TIMEOUT 20 * 1000
+#define RECONNECT_TIMEOUT 30 * 1000
 #else
 // Needs to be quite long, reconnect is blocking for a while
 #define RERECONNECT_TIMEOUT 30 * 60 * 1000
@@ -32,8 +32,8 @@ class RemoteCtrl {
                void (*command_handler_cb)(const void *msg, const int msg_len));
     bool connect();
     bool is_connected();
-    int publish(const std::string &message);
-    void processMessages();
+    int publish(const std::string &message, bool status=false);
+    void poll();
     bool get_wifi_status();
     inline bool set_wifi_status(bool status); // shouldn't need
     inline bool get_mqtt_status();

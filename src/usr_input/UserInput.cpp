@@ -1,11 +1,11 @@
 //
 // Created By Matias Ruonala on 13.03.2025
 
-#include "RemoteCtrl.h"
 #include "UserInput.h"
+#include "RemoteCtrl.h"
+#include <cstdio>
 #include <iostream>
 #include <sstream>
-#include <cstdio>
 
 std::string UserInput::read_input() {
     std::string input;
@@ -37,6 +37,9 @@ bool UserInput::get_validated_input(char *output, size_t max_len) {
         std::cout << "Input is too long, please try again." << std::endl;
         return false;
     } else if (input.length() <= max_len && input.length() != 0) {
+        std::cout << "User entered: [" << input
+                  << "] (length: " << input.length() << ")\n";
+
         strncpy(output, input.c_str(), max_len - 1);
         output[max_len - 1] = '\0';
     }
