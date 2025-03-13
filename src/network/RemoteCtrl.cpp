@@ -18,6 +18,8 @@
 #include <pico/time.h>
 #include <string>
 
+// THE POINTER NEEDS TO BE DEFINED GLOBALLY
+void (*RemoteCtrl::command_handler_cb)(const void *msg, int msg_len) = nullptr;
 
 RemoteCtrl::RemoteCtrl(const char *wifi_ssid, const char *wifi_pwd, const char *ip,
                        const uint16_t port,
@@ -61,6 +63,7 @@ bool RemoteCtrl::connect() {
     */
     printf("Trying to connect\n");
     if (!get_wifi_status()) {
+        printf("Wifi status: %d\n", get_wifi_status());
         ipstack.wifi_reconnect(wifi_ssid, wifi_pwd);
     }
     if (!get_tcp_status()) {
@@ -160,6 +163,7 @@ int RemoteCtrl::publish(const std::string &msg) {
 }
 
 void RemoteCtrl::processMessages() {
+
     cyw43_arch_poll(); // Chesterton's fence
     if (time_reached(reconnect_timer_ms) && !is_connected()) {
         printf("Not connected to MQTT broker\n");
