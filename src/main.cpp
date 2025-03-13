@@ -15,25 +15,28 @@
 queue_t irq_queue;
 
 int main() {
-  stdio_init_all();
-  timer_hw->dbgpause =0;
-  printf("Starting\n");
+    stdio_init_all();
+    timer_hw->dbgpause =0;
+    printf("Starting\n");
 
-  queue_init(&irq_queue, sizeof(int), 1000);
+    queue_init(&irq_queue, sizeof(int), 1000);
 
-  irq_set_enabled(IO_IRQ_BANK0, true);
-  gpio_set_irq_callback(&irq_handler);
+    irq_set_enabled(IO_IRQ_BANK0, true);
+    gpio_set_irq_callback(&irq_handler);
 
-  ControlUnit stm(&irq_queue, 3);
 
-  long ACM=0;
+    ControlUnit stm(&irq_queue, &netctl, 3);
+    RemoteCtrl netctl(NETWORK_SSID, NETWORK_PASSWORD, SERVER_IP);
+    // attach netctl to stm
 
-  for (;;)
-  {
-    stm.operate();
-    ++ACM;
-  }
+    long ACM=0;
 
-  printf("%d", ACM);
-  return 0;
+    for (;;)
+    {
+        stm.operate();
+        ++ACM;
+    }
+
+    printf("%d", ACM);
+    return 0;
 }

@@ -9,6 +9,8 @@
 #include "irq/irq.h"
 #include "pico/util/queue.h"
 
+#include "network/RemoteCtrl.h"
+
 #ifndef CTL_UNIT_H_ 
 #define CTL_UNIT_H_ 
 
@@ -30,7 +32,7 @@ opposite direction (stopped during opening→close and vice versa)
 
 class ControlUnit {
 public:
-    ControlUnit(queue_t*, int);
+    ControlUnit(queue_t*, RemoteCtrl*, int);
     ControlUnit(ControlUnit &) = delete; // do not copy
 
     //int operator()() const;     // returns status of the door
@@ -55,15 +57,6 @@ private:
 
     queue_t* irq_queue;
 
-    /*
-    typedef gen_state {
-        int state_door;
-        bool state_mvdir;
-        bool status_calibrated;
-        bool status_error;
-    } stat;
-    */
-
     struct gen_state 
     {
         int door;
@@ -73,6 +66,8 @@ private:
         int spd_clock;
         int spd_cclock;
     } stat;
+
+    RemoteCtrl* netctl;
 
     Led d1;
     Led d2;
@@ -86,6 +81,7 @@ private:
 
     StepperMotor stp;
     RotaryEncoder rt;
+
 
     enum State {BLOCK, CLOSED, OPEN, STILL, MOVING, CALIBRATE};
     enum MoveState {UP, DOWN};

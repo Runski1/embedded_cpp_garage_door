@@ -1,23 +1,28 @@
 
 #include "pico/stdlib.h"
+#include "pins.h"
+
 #include "control_unit.h"
+
+#include "irq/irq.h"
+#include "pico/util/queue.h"
 
 #include "hardware_classes/Button.h"
 #include "hardware_classes/GpioPin.h"
 #include "hardware_classes/RotaryEncoder.h"
 #include "hardware_classes/StepperMotor.h"
 #include "hardware_classes/Led.h"
-#include "pins.h"
 
-#include "irq/irq.h"
-#include "pico/util/queue.h"
+#include "network/RemoteCtrl.h"
+
+
 
 ControlUnit::ControlUnit 
-(queue_t* queue_ptr, int state_door=3) 
+(queue_t* queue_ptr, RemoteCtrl* netctl_ptr=nullptr, int state_door=3) 
 : irq_queue(queue_ptr), d1(LED_0),d2(LED_1),d3(LED_2),
     sw0(BTN_0,true), sw1(BTN_1,true), sw2(BTN_2,true),
     ds_u(SW_ROT,true), ds_d(SW_MOT,true),
-    stp(),rt(ROT_A, ROT_B) 
+    stp(), rt(ROT_A, ROT_B), netctl()
 {
     stat.door=state_door;
     stat.mvdir=false;
@@ -26,20 +31,19 @@ ControlUnit::ControlUnit
 
     stat.spd_clock=0;
     stat.spd_cclock=0;
+
+    if (netctl_ptr) netctl=netctl_ptr;
+}
+
+void init()
+{
+    netctl->connect();
 }
 
 
 void ControlUnit::operate(void)
 {
-    if (stat.door == MOVING && stat.calibrated)
-    {
-        revolve();
-        // safeguards to prevent hitting the switch body
-        //if ( (stat.door == OPEN && stat.mvdir != UP) 
-        //    || (stat.door == CLOSED && stat.mvdir != DOWN) ) {
-        //}
-    }
-
+    if (stat.door == MOVING && stat.calibrated) revolve();
     if (stat.door == CALIBRATE)
     {
         int j;
@@ -86,6 +90,7 @@ void ControlUnit::operate(void)
             ++stat.spd_cclock;
             break;
     }
+
 
 }
 
