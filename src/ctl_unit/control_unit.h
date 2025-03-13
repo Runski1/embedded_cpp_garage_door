@@ -32,7 +32,8 @@ opposite direction (stopped during opening→close and vice versa)
 
 class ControlUnit {
 public:
-    ControlUnit(queue_t*, RemoteCtrl*, int);
+    //ControlUnit(queue_t*, RemoteCtrl*, int);
+    ControlUnit(queue_t*, int);
     ControlUnit(ControlUnit &) = delete; // do not copy
 
     //int operator()() const;     // returns status of the door
@@ -45,6 +46,8 @@ public:
 
     void init(void);
     void operate(void);     // do stuff based on states
+
+    static void cmd_handler(const void *payload, const int payload_len);
 
 private:
 
@@ -67,7 +70,7 @@ private:
         int spd_cclock;
     } stat;
 
-    RemoteCtrl* netctl;
+    //RemoteCtrl* netctl;
 
     Led d1;
     Led d2;

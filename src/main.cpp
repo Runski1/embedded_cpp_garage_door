@@ -10,9 +10,19 @@
 #include "hardware_classes/RotaryEncoder.h"
 #include "hardware_classes/StepperMotor.h"
 
+#include "network/RemoteCtrl.h"
+#include "network/uart/PicoUart.h"
+#include "network/uart/RingBuffer.h"
+#include "network/mqtt/Countdown.h"
+#include "network/mqtt/IPStack.h"
+#include "network/mqtt/lwipopts.h"
+
 #include "irq/irq.h"
+#include "network_config.h"
 
 queue_t irq_queue;
+
+void (*RemoteCtrl::command_handler_cb)(const void *msg, int msg_len) = nullptr;
 
 int main() {
     stdio_init_all();
@@ -25,14 +35,15 @@ int main() {
     gpio_set_irq_callback(&irq_handler);
 
 
-    ControlUnit stm(&irq_queue, &netctl, 3);
-    RemoteCtrl netctl(NETWORK_SSID, NETWORK_PASSWORD, SERVER_IP);
-    // attach netctl to stm
+    ControlUnit stm(&irq_queue, 3);
+    RemoteCtrl netctl
+    (NETWORK_SSID, NETWORK_PASSWORD, SERVER_IP, 1883, stm.cmd_handler);
 
     long ACM=0;
 
     for (;;)
     {
+        //netctl.processMessages();
         stm.operate();
         ++ACM;
     }

@@ -18,11 +18,12 @@
 
 
 ControlUnit::ControlUnit 
-(queue_t* queue_ptr, RemoteCtrl* netctl_ptr=nullptr, int state_door=3) 
-: irq_queue(queue_ptr), d1(LED_0),d2(LED_1),d3(LED_2),
+//(queue_t* queue_ptr, RemoteCtrl* netctl_ptr=nullptr, int state_door=3) 
+(queue_t* queue_ptr, int state_door=3) 
+: irq_queue(queue_ptr), d1(LED_0), d2(LED_1), d3(LED_2),
     sw0(BTN_0,true), sw1(BTN_1,true), sw2(BTN_2,true),
     ds_u(SW_ROT,true), ds_d(SW_MOT,true),
-    stp(), rt(ROT_A, ROT_B), netctl()
+    stp(), rt(ROT_A, ROT_B)//, netctl()
 {
     stat.door=state_door;
     stat.mvdir=false;
@@ -32,12 +33,18 @@ ControlUnit::ControlUnit
     stat.spd_clock=0;
     stat.spd_cclock=0;
 
-    if (netctl_ptr) netctl=netctl_ptr;
+    //if (netctl_ptr) netctl=netctl_ptr;
 }
 
-void init()
+
+void ControlUnit::init()
 {
-    netctl->connect();
+//    netctl->connect();
+}
+
+void ControlUnit::cmd_handler(const void *payload, const int payloadlen)
+{
+    const int TBREAK=0;
 }
 
 
