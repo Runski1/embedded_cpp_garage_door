@@ -32,13 +32,8 @@ IPStack::IPStack(const char *ssid, const char *pw)
      * of returning after timeout
      * ???
      *
-    if (int rc = cyw43_arch_wifi_connect_timeout_ms(
-            ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("Failed to connect. | %d\n", rc);
-    } else {
-        connected_wifi = true;
-        printf("Connected.\n");
-    }
+
+    printf("Connecting to Wi-Fi\n");
     */
 }
 
@@ -52,11 +47,11 @@ int IPStack::wifi_reconnect(const char *ssid, const char *pw) {
     // Next call hangs if AP is down when first connected
     if (int rc = cyw43_arch_wifi_connect_timeout_ms(
             ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("Failed to connect. | %d\n", rc);
+        printf("Failed to connect to Wi-Fi %d\n", rc);
         return rc;
     } else {
         connected_wifi = true;
-        printf("Connected.\n");
+        printf("Connected to Wi-Fi\n");
         return 0;
     }
 }

@@ -6,26 +6,28 @@
 #include "IPStack.h"
 #include "MQTTClient.h"
 #include "MQTTConnect.h"
+#include "pico/types.h"
+#include <cstdint>
 #include <cstdio>
 #include <cyw43.h>
 #include <cyw43_ll.h>
 #include <hardware/timer.h>
+#include <iostream>
 #include <lwip/err.h>
 #include <pico/cyw43_arch.h>
 #include <pico/time.h>
 #include <string>
 
-#define DEBUG
 
-RemoteCtrl::RemoteCtrl(const char *ssid, const char *password, const char *ip,
+RemoteCtrl::RemoteCtrl(const char *wifi_ssid, const char *wifi_pwd, const char *ip,
+                       const uint16_t port,
                        void (*command_handler_cb)(const void *msg,
                                                   const int msg_len))
     : mqtt_status{false}, tcp_status{false}, wifi_status{false},
-      ipstack(ssid, password),
-      client(MQTT::Client<IPStack, Countdown, 600>(ipstack)),
-      data(MQTTPacket_connectData_initializer), ssid(ssid), wifi_pwd(password),
-      broker_ip(ip), topic("test-topic"),
-      reconnect_timer_ms(make_timeout_time_ms(RECONNECT_TIMEOUT_MQTT)) {
+      wifi_ssid(wifi_ssid), wifi_pwd(wifi_pwd), ipstack(wifi_ssid, wifi_pwd),
+      client(MQTT::Client<IPStack, Countdown, 100>(ipstack)), broker_ip(ip),
+      data(MQTTPacket_connectData_initializer), port(port), topic("test-topic"),
+      reconnect_timer_ms(make_timeout_time_ms(RECONNECT_TIMEOUT)) {
     RemoteCtrl::command_handler_cb = command_handler_cb;
     connect();
 };
@@ -59,7 +61,7 @@ bool RemoteCtrl::connect() {
     */
     printf("Trying to connect\n");
     if (!get_wifi_status()) {
-        ipstack.wifi_reconnect(ssid, wifi_pwd);
+        ipstack.wifi_reconnect(wifi_ssid, wifi_pwd);
     }
     if (!get_tcp_status()) {
         tcp_connect();
@@ -89,9 +91,9 @@ bool RemoteCtrl::tcp_connect() {
     //      creates TCP control block, callback functions for TCP events and
     //      opens socket connection + connects to the server
     // Returns TCP connection status
-    printf("Opening TCP connection to %s:%d\n", broker_ip, MQTT_PORT);
+    printf("Opening TCP connection to %s:%d\n", broker_ip, port);
     ipstack.disconnect();
-    int rc = ipstack.connect(broker_ip, MQTT_PORT);
+    int rc = ipstack.connect(broker_ip, port);
     // TODO add rc translator
     if (rc) {
         printf("TCP connection failed %d\n", rc);
@@ -171,7 +173,7 @@ void RemoteCtrl::processMessages() {
             printf("Reconnecting to MQTT broker\n");
             connect();
         }
-        reconnect_timer_ms = make_timeout_time_ms(RECONNECT_TIMEOUT_MQTT);
+        reconnect_timer_ms = make_timeout_time_ms(RECONNECT_TIMEOUT);
     } else if (is_connected()) {
         client.yield(100); // Isn't reliable to follow MQTT status
     }

@@ -1,5 +1,6 @@
 #include "hardware/gpio.h"
 #include "pico/util/queue.h"
+#include "pico/time.h"
 
 #include "irq.h"
 #include "../pins.h"
@@ -25,7 +26,24 @@ static void rot_a_handler(const bool onboard) {
 }
 
 static void btn_handler(const int event) {
-  queue_try_add(&irq_queue, &event);
+  static int timestamp = 0;
+
+  if (to_ms_since_boot(get_absolute_time()) - timestamp < 300) {
+    return;
+  }
+
+  if (
+    event == PRESS_0 && gpio_get(BTN_2)
+    || event == PRESS_2 && gpio_get(BTN_0)
+      )
+  {
+    const int x = DOUBLE_PRESS;
+    queue_try_add(&irq_queue, &x);
+  } else {
+    queue_try_add(&irq_queue, &event);
+  }
+
+  timestamp = to_ms_since_boot(get_absolute_time());
 }
 
 void irq_handler(uint gpio, uint32_t event_mask) {
