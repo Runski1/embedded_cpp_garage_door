@@ -35,7 +35,6 @@ void test_msg_callback(const void *payload, const int payloadlen) {
     }
     putchar('\n');
 }
-void (*RemoteCtrl::command_handler_cb)(const void *msg, int msg_len) = nullptr;
 
 // your standard std::cin <<, now prints to screen too
 std::string read_input() {
