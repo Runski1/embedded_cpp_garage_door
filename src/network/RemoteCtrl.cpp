@@ -6,39 +6,84 @@
 #include "IPStack.h"
 #include "MQTTClient.h"
 #include "MQTTConnect.h"
+#include "pico/types.h"
+#include <cstdint>
 #include <cstdio>
+#include <cyw43.h>
+#include <cyw43_ll.h>
+#include <hardware/timer.h>
+#include <iostream>
 #include <lwip/err.h>
+#include <pico/cyw43_arch.h>
 #include <pico/time.h>
 #include <string>
 
-#define DEBUG
 
-RemoteCtrl::RemoteCtrl(const char *ssid, const char *password, const char *ip,
+RemoteCtrl::RemoteCtrl(const char *wifi_ssid, const char *wifi_pwd, const char *ip,
+                       const uint16_t port,
                        void (*command_handler_cb)(const void *msg,
                                                   const int msg_len))
-    : ipstack(ssid, password),
-      client(MQTT::Client<IPStack, Countdown, 600>(ipstack)),
-      data(MQTTPacket_connectData_initializer), ssid(ssid), wifi_pwd(password),
-      broker_ip(ip), topic("test-topic"), connected{false} {
+    : mqtt_status{false}, tcp_status{false}, wifi_status{false},
+      wifi_ssid(wifi_ssid), wifi_pwd(wifi_pwd), ipstack(wifi_ssid, wifi_pwd),
+      client(MQTT::Client<IPStack, Countdown, 100>(ipstack)), broker_ip(ip),
+      data(MQTTPacket_connectData_initializer), port(port), topic("test-topic"),
+      reconnect_timer_ms(make_timeout_time_ms(RECONNECT_TIMEOUT)) {
     RemoteCtrl::command_handler_cb = command_handler_cb;
     connect();
 };
 
+bool RemoteCtrl::get_wifi_status() {
+    cyw43_arch_lwip_begin();
+    if (cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA) == CYW43_LINK_UP) {
+        wifi_status = true;
+    } else {
+        wifi_status = false;
+    }
+    cyw43_arch_lwip_end();
+    return wifi_status;
+};
+
 bool RemoteCtrl::connect() {
     // Wrapper function for tcp, mqtt and wifi connecting methods
-    // TODO Should be able to be called repeatedly, to re-establish connection
-    // after failure
-    if (!ipstack.wifi_is_connected()) {
-        ipstack.wifi_reconnect(ssid, wifi_pwd);
+    // Can be spam called
+    //
+    // NOTE: wifi_status doesn't get updated after initial connection.
+    // Problem is that when WiFi link is down, TCP doesn't send keep alive
+    // messages and then tcp_client_err doesn't get triggered (the current way
+    // to detect disconnect) Sending an MQTT message would trigger it, causing
+    // connection retry to happen. However that doesn't update wifi_status. Best
+    // way would be polling cyw43 chip but I have not been able to do that. FAKE
+    // NEWS
+    //
+    /*
+    int retries = 0;
+    while (retries < 3 && !is_connected()) {
+    */
+    printf("Trying to connect\n");
+    if (!get_wifi_status()) {
+        ipstack.wifi_reconnect(wifi_ssid, wifi_pwd);
     }
-    if (ipstack.wifi_is_connected()) {
-        if (tcp_connect()) {
-            if (mqtt_connect()) {
-                connected = true;
-            }
+    if (!get_tcp_status()) {
+        tcp_connect();
+    }
+    if (!get_mqtt_status() && get_tcp_status()) {
+        mqtt_connect();
+    }
+    /*
+    }
+    /*
+    if (!wifi_status) {
+        ipstack.wifi_reconnect(ssid, wifi_pwd);
+    } else {
+        if (!tcp_status && get_wifi_status()) {
+            tcp_connect();
+        }
+        if (!mqtt_status && get_tcp_status()) {
+            mqtt_connect();
         }
     }
-    return connected;
+    */
+    return is_connected();
 }
 
 bool RemoteCtrl::tcp_connect() {
@@ -46,50 +91,51 @@ bool RemoteCtrl::tcp_connect() {
     //      creates TCP control block, callback functions for TCP events and
     //      opens socket connection + connects to the server
     // Returns TCP connection status
-#ifdef DEBUG
-    printf("hello from tcp connect");
-#endif
-    printf("Opening TCP connection to %s:%d\n", broker_ip, MQTT_PORT);
-#ifndef DEBUG
-    ipstack.disconnect(); // resetting the connection for reconnect
-#endif
-    int rc = ipstack.connect(broker_ip, MQTT_PORT);
+    printf("Opening TCP connection to %s:%d\n", broker_ip, port);
+    ipstack.disconnect();
+    int rc = ipstack.connect(broker_ip, port);
     // TODO add rc translator
     if (rc) {
-        printf("rc from TCP connect is %d\n", rc);
-        return false;
+        printf("TCP connection failed %d\n", rc);
+        tcp_status = false;
+    } else {
+        printf("TCP Connected\n");
+        tcp_status = true;
     }
-    return true;
+    return tcp_status;
 }
 
 bool RemoteCtrl::mqtt_connect() {
     // says hi to MQTT broker over TCP using MQTT v3.1 with device name
-    // Garage_door subscribes to topic RemoteCtrl::topic QOS2 is maximum level
-    // of QoS, publishing client decides actual QoS level returns status of MQTT
-    // connection
-    // see messageArrived callback function for handling incoming messages
-    printf("Connecting to MQTT broker\n");
+    // Garage_door subscribes to topic RemoteCtrl::topic QOS2 is maximum
+    // level of QoS, publishing client decides actual QoS level returns
+    // status of MQTT connection see messageArrived callback function for
+    // handling incoming messages
     data.MQTTVersion = 3;
     data.clientID.cstring = (char *)"Garage_door";
-    printf("Device name: %s\n", data.clientID.cstring);
+    printf("MQTT: Connecting to broker as: %s\n", data.clientID.cstring);
     int rc;
     rc = client.connect(data);
     if (rc != 0) {
-        printf("rc from MQTT connect is %d\n", rc);
-        return false;
+        printf("MQTT: connection failed %d\n", rc);
+        mqtt_status = false;
     } else {
-        printf("MQTT connected\n");
+        printf("MQTT: connected\n");
     }
     rc = client.subscribe(topic, MQTT::QOS2, messageArrived);
-    if (rc != 0) {
-        printf("MQTT client failed to subscribe to topic %s %d\n", topic, rc);
-        return false;
+    if (rc == 0) {
+        printf("MQTT: Subscribed to topic %s\n", topic);
+        mqtt_status = true;
+    } else {
+        printf("MQTT: Failed to subscribe to topic %s %d\n", topic, rc);
+        mqtt_status = false;
     }
-    printf("MQTT client subscribed to topic %s\n", topic);
-    return true;
+    return mqtt_status;
 }
 
-bool RemoteCtrl::is_connected() { return connected; }
+bool RemoteCtrl::is_connected() {
+    return (get_wifi_status() && get_tcp_status() && get_mqtt_status());
+}
 
 int RemoteCtrl::publish(const std::string &msg) {
     char buf[100] = {'\0'};
@@ -101,23 +147,36 @@ int RemoteCtrl::publish(const std::string &msg) {
     message.qos = MQTT::QOS0;
     rc = snprintf(buf, sizeof(buf), msg.c_str());
     if (rc >= sizeof(buf)) {
-        printf("Message too long, failed to send");
+        printf("MQTT Publish: Message too long, failed to send");
         return ERR_BUF;
     }
     message.payloadlen = strlen(buf) + 1;
-    printf("Publishing: %s\n", buf);
+    printf("MQTT Publish: message sent: %s\n", buf);
     rc = client.publish(topic, message);
-    printf("publish rc=%d\n", rc);
+    if (rc) {
+        printf("MQTT Publish failed: %d\n", rc);
+    }
     return rc;
 }
 
 void RemoteCtrl::processMessages() {
-    cyw43_arch_poll();
-    if (!connected || !ipstack.tcp_is_connected()) {
-        printf("connection error\n");
-        connect();
-    };
-    client.yield(100);
+    cyw43_arch_poll(); // Chesterton's fence
+    if (time_reached(reconnect_timer_ms) && !is_connected()) {
+        printf("Not connected to MQTT broker\n");
+        mqtt_status = false;
+        if (!get_wifi_status()) {
+            printf("Not connected to wifi\n");
+            // Hang somewhere here, race condition?
+            set_tcp_status(false);
+        }
+        if (get_wifi_status()) {
+            printf("Reconnecting to MQTT broker\n");
+            connect();
+        }
+        reconnect_timer_ms = make_timeout_time_ms(RECONNECT_TIMEOUT);
+    } else if (is_connected()) {
+        client.yield(100); // Isn't reliable to follow MQTT status
+    }
 }
 
 void RemoteCtrl::messageArrived(MQTT::MessageData &md) {
