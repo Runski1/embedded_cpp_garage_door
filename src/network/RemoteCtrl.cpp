@@ -6,30 +6,41 @@
 #include "IPStack.h"
 #include "MQTTClient.h"
 #include "MQTTConnect.h"
+#include "pico/types.h"
+#include <cstdint>
 #include <cstdio>
+#include <iostream>
 #include <lwip/err.h>
 #include <pico/time.h>
 #include <string>
 
-#define DEBUG
+#define DEVELOPMENT
+
+#ifdef DEVELOPMENT
+#define RECONNECT_TIMEOUT 20 * 1000
+#else
+//Needs to be quite long, reconnect is blocking for a while
+#define RERECONNECT_TIMEOUT 30 * 60 * 1000
+#endif
 
 RemoteCtrl::RemoteCtrl(const char *ssid, const char *password, const char *ip,
+                       const uint16_t port,
                        void (*command_handler_cb)(const void *msg,
                                                   const int msg_len))
-    : ipstack(ssid, password),
-      client(MQTT::Client<IPStack, Countdown, 600>(ipstack)),
-      data(MQTTPacket_connectData_initializer), ssid(ssid), wifi_pwd(password),
-      broker_ip(ip), topic("test-topic"), connected{false} {
+    : wifi_ssid(ssid), wifi_pwd(password), ipstack(wifi_ssid, wifi_pwd),
+      client(MQTT::Client<IPStack, Countdown, 100>(ipstack)),
+      broker_ip(ip), data(MQTTPacket_connectData_initializer), port(port),
+      topic("test-topic"), connected{false} {
     RemoteCtrl::command_handler_cb = command_handler_cb;
+    reconnect_timer = make_timeout_time_ms(RECONNECT_TIMEOUT);
     connect();
 };
 
-bool RemoteCtrl::connect() {
-    // Wrapper function for tcp, mqtt and wifi connecting methods
+bool RemoteCtrl::connect() { // Wrapper function for tcp, mqtt and wifi connecting methods
     // TODO Should be able to be called repeatedly, to re-establish connection
     // after failure
     if (!ipstack.wifi_is_connected()) {
-        ipstack.wifi_reconnect(ssid, wifi_pwd);
+        ipstack.wifi_reconnect(wifi_ssid, wifi_pwd);
     }
     if (ipstack.wifi_is_connected()) {
         if (tcp_connect()) {
@@ -46,14 +57,14 @@ bool RemoteCtrl::tcp_connect() {
     //      creates TCP control block, callback functions for TCP events and
     //      opens socket connection + connects to the server
     // Returns TCP connection status
-#ifdef DEBUG
+#ifdef DEVELOPMENT
     printf("hello from tcp connect");
 #endif
-    printf("Opening TCP connection to %s:%d\n", broker_ip, MQTT_PORT);
-#ifndef DEBUG
+    printf("Opening TCP connection to %s:%d\n", broker_ip, port);
+#ifndef DEVELOPMENT
     ipstack.disconnect(); // resetting the connection for reconnect
 #endif
-    int rc = ipstack.connect(broker_ip, MQTT_PORT);
+    int rc = ipstack.connect(broker_ip, port);
     // TODO add rc translator
     if (rc) {
         printf("rc from TCP connect is %d\n", rc);

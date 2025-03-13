@@ -17,8 +17,7 @@ IPStack::IPStack(const char *ssid, const char *pw)
     }
     cyw43_arch_enable_sta_mode();
 
-    printf("Connecting to Wi-Fi...\n");
-    printf("%s, %s\n", ssid, pw);
+    printf("Connecting to Wi-Fi\n");
     if (int rc = cyw43_arch_wifi_connect_timeout_ms(
             ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
         printf("Failed to connect. | %d\n", rc);
@@ -31,17 +30,17 @@ IPStack::IPStack(const char *ssid, const char *pw)
 int IPStack::wifi_reconnect(const char *ssid, const char *pw) {
     // For some reason the cyw43 chip need's to be re-initialized before calling 
     // cyw43_arch_wifi_connect_timeout_ms again
-    printf("retrying wifi connection\n");
+    printf("Retrying to connect to Wi-Fi\n");
     cyw43_arch_deinit();
     cyw43_arch_init();
     cyw43_arch_enable_sta_mode();
     if (int rc = cyw43_arch_wifi_connect_timeout_ms(
             ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("Failed to connect. | %d\n", rc);
+        printf("Failed to connect to Wi-Fi %d\n", rc);
         return rc;
     } else {
         connected_wifi = true;
-        printf("Connected.\n");
+        printf("Connected to Wi-Fi\n");
         return 0;
     }
 }

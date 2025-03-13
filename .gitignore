@@ -13,4 +13,5 @@ mqtt_broker/*
 *.cap
 *.txt
 CMakeLists.txt
+*.bak
 

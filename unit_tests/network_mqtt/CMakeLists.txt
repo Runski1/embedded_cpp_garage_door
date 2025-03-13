@@ -61,6 +61,9 @@ file(GLOB MQTT_SOURCES "../../src/network/paho.mqtt.embedded-c/MQTTPacket/src/*.
 # USE RELATIVE PATHS
 add_executable(${PROJECT_NAME}
         mqtt_unit_test.cpp
+        ../../src/network_config.h
+        ../../src/hardware_classes/Eeprom.h
+        ../../src/hardware_classes/Eeprom.cpp
         ../../src/network/uart/PicoUart.cpp
         ../../src/network/uart/PicoUart.h
         ../../src/network/uart/RingBuffer.cpp
@@ -89,6 +92,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         ../../src/network/uart
         ../../src/network/paho.mqtt.embedded-c/MQTTPacket/src
         ../../src/network/paho.mqtt.embedded-c/MQTTClient/src
+
 )
 
 # Link to pico_stdlib (gpio, time, etc. functions)
