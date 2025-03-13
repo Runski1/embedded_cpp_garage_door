@@ -1,20 +1,58 @@
-#include <cstdio>
+#include "hardware/gpio.h"
 #include "pico/stdio.h"
 #include "pico/util/queue.h"
-#include "hardware/gpio.h"
+#include <cstdio>
+#include <iostream>
+#include <cstring>
+#include <sstream>
+#include "ctl_unit/control_unit.h"
+#include "hardware_classes/Eeprom.h"
+
+#include "network/RemoteCtrl.h"
 
 #include "irq/irq.h"
 
+#include "network_config.h"
+
 queue_t irq_queue;
 
+
 int main() {
-  stdio_init_all();
-  printf("Starting\n");
+    stdio_init_all();
+    timer_hw->dbgpause = 0;
+    printf("Starting\n");
 
-  queue_init(&irq_queue, sizeof(int), 1000);
+    queue_init(&irq_queue, sizeof(int), 1000);
 
-  irq_set_enabled(IO_IRQ_BANK0, true);
-  gpio_set_irq_callback(&irq_handler);
+    irq_set_enabled(IO_IRQ_BANK0, true);
+    gpio_set_irq_callback(&irq_handler);
 
-  return 0;
+    ControlUnit stm(&irq_queue, 3);
+
+
+
+    // Pass these for your stm object
+    auto eeprom = std::make_shared<Eeprom>(i2c0);
+    auto remote = make_RemoteCtrl(eeprom, stm.cmd_handler);
+
+    /// test messsage to send and recieve
+    std::string msg_payload = "Hello you dirty dog!";
+    absolute_time_t debugtimer = make_timeout_time_ms(30000);
+    int dbg_counter = 0;
+
+
+    for (;;) {
+        // netctl.processMessages();
+        stm.operate();
+        remote->poll(); // should be called within stm.operate()
+        if (time_reached(debugtimer)) {
+            if (remote->is_connected() && msg_payload.length() > 0) {
+                remote->publish(msg_payload + " " +
+                                std::to_string(++dbg_counter));
+            }
+            debugtimer = make_timeout_time_ms(5000);
+        }
+    }
+
+    return 0;
 }
