@@ -22,7 +22,7 @@
 
 queue_t irq_queue;
 
-void (*RemoteCtrl::command_handler_cb)(const void *msg, int msg_len) = nullptr;
+//void (*RemoteCtrl::command_handler_cb)(const void *msg, int msg_len) = nullptr;
 
 int main() {
     stdio_init_all();
@@ -40,6 +40,7 @@ int main() {
     (NETWORK_SSID, NETWORK_PASSWORD, SERVER_IP, 1883, stm.cmd_handler);
 
     long ACM=0;
+    netctl.connect();
 
     for (;;)
     {
