@@ -10,6 +10,9 @@
 #include "pico/util/queue.h"
 
 #include "network/RemoteCtrl.h"
+#include "hardware_classes/Eeprom.h"
+
+#include <memory>
 
 #ifndef CTL_UNIT_H_ 
 #define CTL_UNIT_H_ 
@@ -44,7 +47,7 @@ public:
     //bool getError();
     //void setError();
 
-    void init(void);
+    void init(std::unique_ptr<RemoteCtrl>, std::shared_ptr<Eeprom>);
     void operate(void);     // do stuff based on states
 
     static void cmd_handler(const void *payload, const int payload_len);
@@ -57,6 +60,9 @@ private:
     void calibrate();
 
     void DEBUG_revolve(int, bool);
+
+    std::unique_ptr<RemoteCtrl> netctl;
+    std::shared_ptr<Eeprom> rom;
 
     queue_t* irq_queue;
 

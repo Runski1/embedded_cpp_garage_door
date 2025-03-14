@@ -4,6 +4,7 @@
 #ifndef REMOTE_CTRL_H
 #define REMOTE_CTRL_H
 
+#include "../../../src/hardware_classes/Eeprom.h"
 #include "Countdown.h"
 #include "IPStack.h"
 #include "MQTTClient.h"
@@ -11,13 +12,14 @@
 #include <cstdio>
 #include <cyw43.h>
 #include <hardware/timer.h>
+#include <memory>
 #include <stdint.h>
 #include <string>
 
 #define DEVELOPMENT
 
 #ifdef DEVELOPMENT
-#define RECONNECT_TIMEOUT 20 * 1000
+#define RECONNECT_TIMEOUT 30 * 1000
 #else
 // Needs to be quite long, reconnect is blocking for a while
 #define RERECONNECT_TIMEOUT 30 * 60 * 1000
@@ -30,8 +32,8 @@ class RemoteCtrl {
                void (*command_handler_cb)(const void *msg, const int msg_len));
     bool connect();
     bool is_connected();
-    int publish(const std::string &message);
-    void processMessages();
+    int publish(const std::string &message, bool status=false);
+    void poll();
     bool get_wifi_status();
     inline bool set_wifi_status(bool status); // shouldn't need
     inline bool get_mqtt_status();
@@ -47,7 +49,7 @@ class RemoteCtrl {
     const char *wifi_ssid;
     const char *wifi_pwd;
     const char *broker_ip;
-    const uint16_t port;
+    uint16_t port;
     IPStack ipstack;
     MQTT::Client<IPStack, Countdown, 100> client;
     MQTTPacket_connectData data;
@@ -59,6 +61,10 @@ class RemoteCtrl {
     static void messageArrived(MQTT::MessageData &md);
     absolute_time_t reconnect_timer_ms;
 };
+
+std::unique_ptr<RemoteCtrl> make_RemoteCtrl(std::shared_ptr<Eeprom> eeprom,
+               void (*msg_handler_cb)(const void *msg, const int msg_len));
+
 
 bool RemoteCtrl::set_wifi_status(bool status) { wifi_status = status; };
 bool RemoteCtrl::get_mqtt_status() { return mqtt_status; };

@@ -1,4 +1,5 @@
 
+#include <memory>
 #include "pico/stdlib.h"
 #include "pins.h"
 
@@ -9,21 +10,17 @@
 
 #include "hardware_classes/Button.h"
 #include "hardware_classes/GpioPin.h"
+#include "hardware_classes/Led.h"
 #include "hardware_classes/RotaryEncoder.h"
 #include "hardware_classes/StepperMotor.h"
-#include "hardware_classes/Led.h"
 
 #include "network/RemoteCtrl.h"
 
-
-
-ControlUnit::ControlUnit 
-//(queue_t* queue_ptr, RemoteCtrl* netctl_ptr=nullptr, int state_door=3) 
-(queue_t* queue_ptr, int state_door=3) 
-: irq_queue(queue_ptr), d1(LED_0), d2(LED_1), d3(LED_2),
-    sw0(BTN_0,true), sw1(BTN_1,true), sw2(BTN_2,true),
-    ds_u(SW_ROT,true), ds_d(SW_MOT,true),
-    stp(), rt(ROT_A, ROT_B)//, netctl()
+ControlUnit::ControlUnit
+(queue_t *queue_ptr, int state_door)
+  : irq_queue(queue_ptr), d1(LED_0), d2(LED_1), d3(LED_2), sw0(BTN_0, true),
+    sw1(BTN_1, true), sw2(BTN_2, true), ds_u(SW_ROT, true),
+    ds_d(SW_MOT, true), stp(), rt(ROT_A, ROT_B) //, netctl()
 {
     stat.door=state_door;
     stat.mvdir=false;
@@ -34,8 +31,11 @@ ControlUnit::ControlUnit
 }
 
 
-void ControlUnit::init()
+void ControlUnit::init
+(std::unique_ptr<RemoteCtrl> netctl_ptr, std::shared_ptr<Eeprom> rom_ptr)
 {
+    netctl=std::move(netctl_ptr);
+    rom=rom_ptr;
 }
 
 void ControlUnit::cmd_handler(const void *payload, const int payloadlen)
@@ -49,14 +49,15 @@ void ControlUnit::cmd_handler(const void *payload, const int payloadlen)
 
 void ControlUnit::operate(void)
 {
+    if (stat.door > CALIBRATE || stat.door < BLOCK) stat.door = STILL;
     if (stat.door == MOVING && stat.calibrated) revolve();
     if (stat.door == CALIBRATE) calibrate();
 
     int event=0;
+    spd_ang=0;
     queue_try_remove(irq_queue, &event);
 
-    switch (event)
-    {
+    switch (event) {
         case irq_event::PRESS_1:
             action();
             break;
@@ -80,22 +81,31 @@ void ControlUnit::operate(void)
             /* 18 degrees / time from previous stamp
               (lets hope the prog will run fast enough)
             */
-            spd_ang = (double)18 / (double)((time_st - time_st_prev) / 1000); // in ms
+
+            // degrees/ms
+            spd_ang = (double)18 /(double)((time_st-time_st_prev) /1000);
             time_st_prev = time_st;
             break;
         }
         case irq_event::ROT_ANTI_CLOCKWISE:
         {
             uint64_t time_st = time_us_64();
-            spd_ang = (double)18 / (double)((time_st - time_st_prev) / 1000); // in ms
+            spd_ang = 
+                (double)18 / (double)((time_st - time_st_prev) / 1000);
             time_st_prev = time_st;
             break;
         }
+
+        default:
+            // process net stuff if queeueuu is empty
+            netctl->poll();
+            spd_ang=0;
     }
+
     // if door spins and its angular velocity less than 30% of measured speed
     // then something blocks the way
     if (DBG_S)  printf("SPD: %0.10f SPD_GEN: %0.10f\n", spd_ang, stat.spd_gen);
-    if (stat.door == MOVING && spd_ang < stat.spd_gen*0.3)
+    if (stat.door == MOVING && spd_ang < stat.spd_gen*0.5)
     {
         printf("STUCK!\n");
     }
@@ -110,37 +120,42 @@ void ControlUnit::action(void)
     {
     }
     */
-    if (stat.door == CLOSED) stat.mvdir = UP;
-    if (stat.door == OPEN) stat.mvdir = DOWN;
+    if (stat.door == CLOSED)
+        stat.mvdir = UP;
+    if (stat.door == OPEN)
+        stat.mvdir = DOWN;
 
-    if (stat.door == STILL||stat.door == CLOSED||stat.door == OPEN) 
-    {
+    if (stat.door == STILL || stat.door == CLOSED || stat.door == OPEN) {
         stat.door = MOVING;
-        if (stat.mvdir)
-            { d3.set_state(false);d2.set_state(false);d1.set_state(true); }
-        else
-            { d3.set_state(true);d2.set_state(false);d1.set_state(false); }
-    }
-    else if (stat.door == MOVING)
-    {
+        if (stat.mvdir) {
+            d3.set_state(false);
+            d2.set_state(false);
+            d1.set_state(true);
+        } else {
+            d3.set_state(true);
+            d2.set_state(false);
+            d1.set_state(false);
+        }
+    } else if (stat.door == MOVING) {
         stat.door = STILL;
         stat.mvdir = !stat.mvdir;
-        d3.set_state(false);d2.set_state(true);d1.set_state(false);
+        d3.set_state(false);
+        d2.set_state(true);
+        d1.set_state(false);
     }
-
 }
 
-void ControlUnit::revolve()
-{
-    if (stat.mvdir)
-    {
+void ControlUnit::revolve() {
+    if (stat.mvdir) {
         stp.step_right();
-        d3.set_state(false);d2.set_state(false);d1.set_state(true);
-    }
-    else if (!stat.mvdir)
-    {
+        d3.set_state(false);
+        d2.set_state(false);
+        d1.set_state(true);
+    } else if (!stat.mvdir) {
         stp.step_left();
-        d3.set_state(true);d2.set_state(false);d1.set_state(false);
+        d3.set_state(true);
+        d2.set_state(false);
+        d1.set_state(false);
     }
 }
 
@@ -262,8 +277,6 @@ void ControlUnit::calibrate()
     return;
 }
 */
-
-
 /*
 void ControlUnit::setDirection(bool dir)
 {
