@@ -73,13 +73,14 @@ void ControlUnit::operate(void) {
     case irq_event::PRESS_1:
             if (stat.door == STILL) {
                 if (stat.mvdir == DOWN) {
-                    // these are wrong
+                    // TODO: 
                     printf("Closing door.\n");
                 } else {
-                    // these are wrong
+                    //TODO: 
                     printf("Opening door.\n");
                 }
             } else {
+                    //TODO:
                 printf("Door stopped\n");
             }
         action();
@@ -87,7 +88,7 @@ void ControlUnit::operate(void) {
 
     case irq_event::CLICK_ROT:
             if (stat.door != OPEN) {
-                printf("Door open\n");
+                printf("Door closed\n");
             }
         stat.door = OPEN;
         break;

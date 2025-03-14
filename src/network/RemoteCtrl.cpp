@@ -220,7 +220,7 @@ void RemoteCtrl::poll() {
         connect();
         reconnect_timer_ms = make_timeout_time_ms(RECONNECT_TIMEOUT);
     } else {
-        client.yield(100); // Isn't reliable to follow MQTT status
+        client.yield(10); // Isn't reliable to follow MQTT status
     }
 }
 
