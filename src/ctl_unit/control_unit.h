@@ -66,11 +66,11 @@ private:
         bool mvdir;
         bool calibrated;
         bool error;
-        int spd_clock;
-        int spd_cclock;
+        int deg;        // degrees
+        double spd_gen; // detents/ms
     } stat;
 
-    //RemoteCtrl* netctl;
+    double spd_ang;
 
     Led d1;
     Led d2;
@@ -85,6 +85,9 @@ private:
     StepperMotor stp;
     RotaryEncoder rt;
 
+    uint64_t time_st_prev;
+    bool DBG_S;
+    // TODO: a way to find the speed of the motor
 
     enum State {BLOCK, CLOSED, OPEN, STILL, MOVING, CALIBRATE};
     enum MoveState {UP, DOWN};
