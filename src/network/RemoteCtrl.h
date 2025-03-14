@@ -46,9 +46,9 @@ class RemoteCtrl {
     bool tcp_status;
     bool wifi_status;
     absolute_time_t reconnect_timer;
-    const char *wifi_ssid;
-    const char *wifi_pwd;
-    const char *broker_ip;
+    char wifi_ssid[32];
+    char wifi_pwd[64];
+    char broker_ip[16];
     uint16_t port;
     IPStack ipstack;
     MQTT::Client<IPStack, Countdown, 100> client;

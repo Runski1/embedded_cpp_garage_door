@@ -12,7 +12,8 @@
 #define DUMP_BYTES(A, B)                                                       \
     {                                                                          \
     }
-#define WIFI_RETRIES 3
+//#define WIFI_RETRIES 4
+
 IPStack::IPStack(const char *ssid, const char *pw)
     : count{0}, wr{0}, rd{0}, tcp_pcb(nullptr), connected{false},
       connected_wifi{false} {
