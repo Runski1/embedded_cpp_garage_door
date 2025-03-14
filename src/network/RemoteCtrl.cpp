@@ -116,18 +116,19 @@ bool RemoteCtrl::connect() {
     // Can be spam called
     //
     int retries = 0;
-    int rc = 0;
+    int rc_w = 0;
+    int rc_tcp = 0;
     while (retries < 4 && !is_connected()) {
         printf("%d Trying to connect ---------\n", ++retries);
         if (!get_wifi_status()) {
-            rc = ipstack.wifi_reconnect(wifi_ssid, wifi_pwd);
+            rc_w = ipstack.wifi_reconnect(wifi_ssid, wifi_pwd);
             // 0 is succss
         }
-        if (!rc) {
-            rc = tcp_connect();
+        if (!rc_w) {
+            rc_tcp = tcp_connect();
             // true is success -.-
         }
-        if (rc == 1) {
+        if (rc_tcp) {
             mqtt_connect();
             // true is success
         }
@@ -226,8 +227,5 @@ void RemoteCtrl::poll() {
 void RemoteCtrl::messageArrived(MQTT::MessageData &md) {
     // Callback function for MQTT::subscribe
     MQTT::Message &message = md.message;
-    printf("Message arrived: qos %d, retained %d, dup %d, packetid %d\n",
-           message.qos, message.retained, message.dup, message.id);
-    printf("Payload ");
     command_handler_cb(message.payload, message.payloadlen);
 }

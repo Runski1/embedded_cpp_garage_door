@@ -1,7 +1,9 @@
 
-#include <memory>
 #include "pico/stdlib.h"
 #include "pins.h"
+#include <hardware/timer.h>
+#include <memory>
+#include <pico/time.h>
 
 #include "control_unit.h"
 
@@ -16,104 +18,128 @@
 
 #include "network/RemoteCtrl.h"
 
-ControlUnit::ControlUnit
-(queue_t *queue_ptr, int state_door)
-  : irq_queue(queue_ptr), d1(LED_0), d2(LED_1), d3(LED_2), sw0(BTN_0, true),
-    sw1(BTN_1, true), sw2(BTN_2, true), ds_u(SW_ROT, true),
-    ds_d(SW_MOT, true), stp(), rt(ROT_A, ROT_B) //, netctl()
+ControlUnit::ControlUnit(int state_door)
+    : d1(LED_0), d2(LED_1), d3(LED_2), sw0(BTN_0, true), sw1(BTN_1, true),
+      sw2(BTN_2, true), ds_u(SW_ROT, true), ds_d(SW_MOT, true), stp(),
+      rt(ROT_A, ROT_B), nw_timer(make_timeout_time_ms(1000)) //, netctl()
 {
-    stat.door=state_door;
-    stat.mvdir=false;
-    stat.calibrated=false;
-    stat.error=false;
+    stat.door = state_door;
+    stat.mvdir = false;
+    stat.calibrated = false;
+    stat.error = false;
 
-    spd_ang=0;
+    spd_ang = 0;
 }
 
-
-void ControlUnit::init
-(std::unique_ptr<RemoteCtrl> netctl_ptr, std::shared_ptr<Eeprom> rom_ptr)
-{
-    netctl=std::move(netctl_ptr);
-    rom=rom_ptr;
+void ControlUnit::init(std::unique_ptr<RemoteCtrl> netctl_ptr,
+                       std::shared_ptr<Eeprom> rom_ptr) {
+    netctl = std::move(netctl_ptr);
+    rom = rom_ptr;
 }
 
-void ControlUnit::cmd_handler(const void *payload, const int payloadlen)
-{
+void ControlUnit::cmd_handler(const void *payload, const int payloadlen) {
+    int event;
+    if (strncmp((const char *)payload, "action", payloadlen) == 0) {
+        event = PRESS_1;
+        queue_try_add(&irq_queue, &event);
+    } else if (strncmp((const char *)payload, "calibrate", payloadlen) == 0) {
+        event = DOUBLE_PRESS;
+        queue_try_add(&irq_queue, &event);
+    }
     for (uint i = 0; i < payloadlen; i++) {
         putchar(((char *)payload)[i]);
     }
     putchar('\n');
 }
 
+void ControlUnit::operate(void) {
 
-void ControlUnit::operate(void)
-{
-    if (stat.door > CALIBRATE || stat.door < BLOCK) stat.door = STILL;
-    if (stat.door == MOVING && stat.calibrated) revolve();
-    if (stat.door == CALIBRATE) calibrate();
+    if (time_reached(nw_timer)) {
+        netctl->poll();
+        nw_timer = make_timeout_time_ms(1000);
+    }
+    if (stat.door > CALIBRATE || stat.door < BLOCK)
+        stat.door = STILL;
+    if (stat.door == MOVING && stat.calibrated)
+        revolve();
+    if (stat.door == CALIBRATE)
+        calibrate();
 
-    int event=0;
-    spd_ang=0;
-    queue_try_remove(irq_queue, &event);
+    int event = -1;
+    spd_ang = 0;
+    queue_try_remove(&irq_queue, &event);
 
     switch (event) {
-        case irq_event::PRESS_1:
-            action();
-            break;
+    case irq_event::PRESS_1:
+            if (stat.door == STILL) {
+                if (stat.mvdir == DOWN) {
+                    // these are wrong
+                    printf("Closing door.\n");
+                } else {
+                    // these are wrong
+                    printf("Opening door.\n");
+                }
+            } else {
+                printf("Door stopped\n");
+            }
+        action();
+        break;
 
-        case irq_event::CLICK_ROT:
-            stat.door = OPEN;
-            break;
+    case irq_event::CLICK_ROT:
+            if (stat.door != OPEN) {
+                printf("Door open\n");
+            }
+        stat.door = OPEN;
+        break;
 
-        case irq_event::CLICK_MOT:
-            stat.door = CLOSED;
-            break;
+    case irq_event::CLICK_MOT:
+            if (stat.door != CLOSED) {
+                printf("Door open\n");
+            }
+        stat.door = CLOSED;
+        break;
 
-        case irq_event::DOUBLE_PRESS:
-            stat.door = CALIBRATE;
-            break;
+    case irq_event::DOUBLE_PRESS:
+        if (stat.door != CALIBRATE) {
+                printf("Calibrating\n");
+            }
+        stat.door = CALIBRATE;
+        break;
 
-        // TODO: PROBLEM SPOT // HOW TO FIND THE SPEED?
-        case irq_event::ROT_CLOCKWISE:
-        {// <<< bypassing initialization(?)
-            uint64_t time_st = time_us_64();
-            /* 18 degrees / time from previous stamp
-              (lets hope the prog will run fast enough)
-            */
+    // TODO: PROBLEM SPOT // HOW TO FIND THE SPEED?
+    case irq_event::ROT_CLOCKWISE: { // <<< bypassing initialization(?)
+        uint64_t time_st = time_us_64();
+        /* 18 degrees / time from previous stamp
+          (lets hope the prog will run fast enough)
+        */
 
-            // degrees/ms
-            spd_ang = (double)18 /(double)((time_st-time_st_prev) /1000);
-            time_st_prev = time_st;
-            break;
-        }
-        case irq_event::ROT_ANTI_CLOCKWISE:
-        {
-            uint64_t time_st = time_us_64();
-            spd_ang = 
-                (double)18 / (double)((time_st - time_st_prev) / 1000);
-            time_st_prev = time_st;
-            break;
-        }
+        // degrees/ms
+        spd_ang = (double)18 / (double)((time_st - time_st_prev) / 1000);
+        time_st_prev = time_st;
+        break;
+    }
+    case irq_event::ROT_ANTI_CLOCKWISE: {
+        uint64_t time_st = time_us_64();
+        spd_ang = (double)18 / (double)((time_st - time_st_prev) / 1000);
+        time_st_prev = time_st;
+        break;
+    }
 
-        default:
-            // process net stuff if queeueuu is empty
-            netctl->poll();
-            spd_ang=0;
+    default:
+        // process net stuff if queeueuu is empty
+        spd_ang = 0;
     }
 
     // if door spins and its angular velocity less than 30% of measured speed
     // then something blocks the way
-    if (stat.door == MOVING && spd_ang < stat.spd_gen*0.5)
-    {
-        printf("STUCK!\n");
-    }
-
+    //if (stat.door == MOVING && spd_ang < stat.spd_gen * 0.5) {
+    // printf("STUCK\n");
+    //}
 }
 
-void ControlUnit::action(void)
-{
-    if (!stat.calibrated) return;
+void ControlUnit::action(void) {
+    if (!stat.calibrated)
+        return;
     /* TODO:
     if (stat.mvdir != 0 && SPEED == 0 )   // add speed here
     {
@@ -158,62 +184,67 @@ void ControlUnit::revolve() {
     }
 }
 
-void ControlUnit::DEBUG_revolve(int AMT, bool DIR_)
-{
-    if (DIR_)   for (int i=0; i<AMT; ++i) stp.step_right();
-    else        for (int i=0; i<AMT; ++i) stp.step_left();
+void ControlUnit::DEBUG_revolve(int AMT, bool DIR_) {
+    if (DIR_)
+        for (int i = 0; i < AMT; ++i)
+            stp.step_right();
+    else
+        for (int i = 0; i < AMT; ++i)
+            stp.step_left();
 }
 
-void ControlUnit::calibrate()
-{
-    stat.mvdir =UP;
+void ControlUnit::calibrate() {
+    stat.mvdir = UP;
 
     do {
         revolve();
-    } while ( !ds_u() );
+    } while (!ds_u());
 
     // make measurement
-    uint64_t time_st0 =time_us_64();
-    int event=0;
-    while ( queue_try_remove(irq_queue, &event) ); // clear the queue
+    uint64_t time_st0 = time_us_64();
+    int event = 0;
+    while (queue_try_remove(&irq_queue, &event))
+        ; // clear the queue
 
-    stat.mvdir =DOWN;
+    stat.mvdir = DOWN;
     // run it down
     do {
         revolve();
-    } while ( !ds_d() );
+    } while (!ds_d());
 
-    stat.mvdir =UP;
+    stat.mvdir = UP;
     // run it back up
     do {
         revolve();
-    } while ( !ds_u() );
-    uint64_t time_st1 =time_us_64();
+    } while (!ds_u());
+    uint64_t time_st1 = time_us_64();
 
     // count the amount of steps from both directions
-    int clock_det  =0;
-    int cclock_det =0;
-    while (queue_try_remove(irq_queue, &event))
-    {
-        if (irq_event::ROT_CLOCKWISE)       clock_det++;
-        if (irq_event::ROT_ANTI_CLOCKWISE)  cclock_det++;
+    int clock_det = 0;
+    int cclock_det = 0;
+    while (queue_try_remove(&irq_queue, &event)) {
+        if (irq_event::ROT_CLOCKWISE)
+            clock_det++;
+        if (irq_event::ROT_ANTI_CLOCKWISE)
+            cclock_det++;
     }
 
     // set the status of the door
-    stat.calibrated =true;
-    stat.door =OPEN;
-    stat.mvdir =DOWN;
+    stat.calibrated = true;
+    stat.door = OPEN;
+    stat.mvdir = DOWN;
 
     // save the greater value of the 2
-    //stat.det_amt= (clock_det > cclock_det) ? clock_det : cclock_det;
+    // stat.det_amt= (clock_det > cclock_det) ? clock_det : cclock_det;
 
-    stat.deg =(clock_det+cclock_det)*18 / 2; //calculate the amount of degrees
+    stat.deg =
+        (clock_det + cclock_det) * 18 / 2; // calculate the amount of degrees
 
     // calculate the 'generic speed'
-    stat.spd_gen =
-        (double)((clock_det+cclock_det) *18) / ( (time_st1-time_st0) / 1000 );
+    stat.spd_gen = (double)((clock_det + cclock_det) * 18) /
+                   ((time_st1 - time_st0) / 1000);
 
-    //spd_ang = (double)18 / (double)((time_st-time_st_prev) / 1000);
+    // spd_ang = (double)18 / (double)((time_st-time_st_prev) / 1000);
     return;
 }
 
@@ -236,12 +267,12 @@ void ControlUnit::calibrate()
     if (ds_d()) stat.mvdir = UP;
 
     ------
-    
+
     // make a couple of steps from switches
     do {
         revolve();
     } while ( ds_u() || ds_d() );
-    while ( queue_try_remove(irq_queue, &event) ); // clear the queue
+    while ( queue_try_remove(&irq_queue, &event) ); // clear the queue
     ------
 
 
@@ -258,7 +289,7 @@ void ControlUnit::calibrate()
     // count the amount of steps
     int clock_det=0;
     int cclock_det=0;
-    while (queue_try_remove(irq_queue, &event))
+    while (queue_try_remove(&irq_queue, &event))
     {
         if (irq_event::ROT_CLOCKWISE)       clock_det++;
         if (irq_event::ROT_ANTI_CLOCKWISE)  cclock_det++;

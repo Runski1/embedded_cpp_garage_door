@@ -36,30 +36,20 @@ int main() {
     irq_set_enabled(IO_IRQ_BANK0, true);
     gpio_set_irq_callback(&irq_handler);
 
-    ControlUnit stm(&irq_queue, 3);
+    ControlUnit stm(3);
 
     auto eeprom = std::make_shared<Eeprom>(i2c0);
-    auto remote = make_RemoteCtrl(eeprom, stm.cmd_handler);
+    auto remote = make_RemoteCtrl(eeprom, ControlUnit::cmd_handler);
 
     stm.init(std::move(remote), eeprom);
 
     /// test messsage to send and recieve
-    std::string msg_payload = "Hello you dirty dog!";
-    absolute_time_t debugtimer = make_timeout_time_ms(30000);
-    int dbg_counter = 0;
 
 
     for (;;) {
         // netctl.processMessages();
         stm.operate();
         //remote->poll(); // should be called within stm.operate()
-        if (time_reached(debugtimer)) {
-            if (remote->is_connected() && msg_payload.length() > 0) {
-                remote->publish(msg_payload + " " +
-                                std::to_string(++dbg_counter));
-            }
-            debugtimer = make_timeout_time_ms(30000);
-        }
     }
 
     return 0;
