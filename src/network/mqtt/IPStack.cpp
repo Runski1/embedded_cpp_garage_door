@@ -12,7 +12,8 @@
 #define DUMP_BYTES(A, B)                                                       \
     {                                                                          \
     }
-#define WIFI_RETRIES 3
+//#define WIFI_RETRIES 4
+
 IPStack::IPStack(const char *ssid, const char *pw)
     : count{0}, wr{0}, rd{0}, tcp_pcb(nullptr), connected{false},
       connected_wifi{false} {
@@ -31,12 +32,14 @@ int IPStack::wifi_reconnect(const char *ssid, const char *pw) {
     }
     printf("Connecting to wifi SSID:%s\n", ssid);
     cyw43_arch_enable_sta_mode();
-    // Next call hangs if AP is down when first connected
+    sleep_ms(2000);
+    // Next call hangs if AP is down when first connected ???
     if (int rc = cyw43_arch_wifi_connect_timeout_ms(
             ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
         printf("Failed to connect to Wi-Fi %d\n", rc);
         return rc;
     } else {
+        sleep_ms(2000);
         connected_wifi = true;
         printf("Connected to Wi-Fi\n");
         return 0;

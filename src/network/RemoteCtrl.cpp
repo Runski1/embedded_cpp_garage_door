@@ -29,12 +29,19 @@ RemoteCtrl::RemoteCtrl(const char *wifi_ssid, const char *wifi_pwd,
                        void (*command_handler_cb)(const void *msg,
                                                   const int msg_len))
     : mqtt_status{false}, tcp_status{false}, wifi_status{false},
-      wifi_ssid(wifi_ssid), wifi_pwd(wifi_pwd), broker_ip(ip),
       ipstack(wifi_ssid, wifi_pwd),
       client(MQTT::Client<IPStack, Countdown, 100>(ipstack)),
       data(MQTTPacket_connectData_initializer), port(port),
       topic("garage/door/command"),
       reconnect_timer_ms(make_timeout_time_ms(RECONNECT_TIMEOUT)) {
+    strncpy(this->wifi_ssid, wifi_ssid, sizeof(this->wifi_ssid) - 1);
+    this->wifi_ssid[sizeof(this->wifi_ssid) - 1] = '\0';
+
+    strncpy(this->wifi_pwd, wifi_pwd, sizeof(this->wifi_pwd) - 1);
+    this->wifi_pwd[sizeof(this->wifi_pwd) - 1] = '\0';
+
+    strncpy(this->broker_ip, ip, sizeof(this->broker_ip) - 1);
+    this->broker_ip[sizeof(this->broker_ip) - 1] = '\0';
     this->command_handler_cb = command_handler_cb;
     connect();
 };
@@ -109,11 +116,21 @@ bool RemoteCtrl::connect() {
     // Can be spam called
     //
     int retries = 0;
+    int rc = 0;
     while (retries < 4 && !is_connected()) {
         printf("%d Trying to connect ---------\n", ++retries);
-        ipstack.wifi_reconnect(wifi_ssid, wifi_pwd);
-        tcp_connect();
-        mqtt_connect();
+        if (!get_wifi_status()) {
+            rc = ipstack.wifi_reconnect(wifi_ssid, wifi_pwd);
+            // 0 is succss
+        }
+        if (!rc) {
+            rc = tcp_connect();
+            // true is success -.-
+        }
+        if (rc == 1) {
+            mqtt_connect();
+            // true is success
+        }
     }
     return is_connected();
 }
@@ -125,6 +142,7 @@ bool RemoteCtrl::tcp_connect() {
     // Returns TCP connection status
     printf("Opening TCP connection to %s:%d\n", broker_ip, port);
     ipstack.disconnect();
+    sleep_ms(500);
     printf("Opening TCP connection to %s:%d\n", broker_ip, port);
     int rc = ipstack.connect(broker_ip, port);
     // TODO add rc translator

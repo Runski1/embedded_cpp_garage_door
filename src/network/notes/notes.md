@@ -1,3 +1,7 @@
+## Before DEMO
+Try connecting to network only once in boot, not later
+Wifi ssid, broker ip gets corrupted
+
 # Breaktime notes
 Retry-loop is very fast if broker is down but everything else works nicely. 
 Reconnect will happen when MQTT timeout occurs (I think)
