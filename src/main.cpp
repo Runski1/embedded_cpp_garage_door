@@ -29,7 +29,6 @@ queue_t irq_queue;
 int main() {
     stdio_init_all();
     timer_hw->dbgpause = 0;
-    printf("Starting\n");
 
     queue_init(&irq_queue, sizeof(int), 1000);
 
@@ -47,6 +46,7 @@ int main() {
     std::string msg_payload = "Hello you dirty dog!";
     absolute_time_t debugtimer = make_timeout_time_ms(30000);
     int dbg_counter = 0;
+    printf("Starting\n");
 
 
     for (;;) {

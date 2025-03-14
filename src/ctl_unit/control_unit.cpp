@@ -1,5 +1,6 @@
 
 #include <memory>
+#include <cmath>
 #include "pico/stdlib.h"
 #include "pins.h"
 
@@ -27,7 +28,9 @@ ControlUnit::ControlUnit
     stat.calibrated=false;
     stat.error=false;
 
-    spd_ang=0;
+    steps=0;
+    rotary_steps=0;
+    
 }
 
 
@@ -53,8 +56,7 @@ void ControlUnit::operate(void)
     if (stat.door == MOVING && stat.calibrated) revolve();
     if (stat.door == CALIBRATE) calibrate();
 
-    int event=0;
-    spd_ang=0;
+    int event=-1;
     queue_try_remove(irq_queue, &event);
 
     switch (event) {
@@ -76,37 +78,35 @@ void ControlUnit::operate(void)
 
         // TODO: PROBLEM SPOT // HOW TO FIND THE SPEED?
         case irq_event::ROT_CLOCKWISE:
-        {// <<< bypassing initialization(?)
-            uint64_t time_st = time_us_64();
-            /* 18 degrees / time from previous stamp
-              (lets hope the prog will run fast enough)
-            */
-
-            // degrees/ms
-            spd_ang = (double)18 /(double)((time_st-time_st_prev) /1000);
-            time_st_prev = time_st;
+            rotary_steps++;
             break;
-        }
+
         case irq_event::ROT_ANTI_CLOCKWISE:
-        {
-            uint64_t time_st = time_us_64();
-            spd_ang = 
-                (double)18 / (double)((time_st - time_st_prev) / 1000);
-            time_st_prev = time_st;
+            rotary_steps++;
             break;
-        }
 
-        default:
+        //default:
             // process net stuff if queeueuu is empty
-            netctl->poll();
-            spd_ang=0;
+            //netctl->poll();
     }
 
-    // if door spins and its angular velocity less than 30% of measured speed
-    // then something blocks the way
-    if (stat.door == MOVING && spd_ang < stat.spd_gen*0.5)
+
+    //printf("ST:%d RT:%d EVT:%d\n", steps, rotary_steps, event);
+    double max_diff = 300;
+    if (stat.door == MOVING)
     {
-        printf("STUCK!\n");
+        double RAT=((double)steps/(double)rotary_steps);
+        double DIFF=abs(stat.spd_gen - RAT);
+        printf("%lf\n", DIFF);
+
+        if (time_reached(block_timer) 
+            && ( DIFF < 320 && DIFF > max_diff && steps > 200 && rotary_steps > 0) )
+        {
+            printf("STUCK!\n");
+            stat.error=true;
+            stat.calibrated=false;
+            stat.door=STILL;
+        }
     }
 
 }
@@ -126,6 +126,11 @@ void ControlUnit::action(void)
 
     if (stat.door == STILL || stat.door == CLOSED || stat.door == OPEN) {
         stat.door = MOVING;
+        block_timer = make_timeout_time_ms(1000);
+
+        steps=0;
+        rotary_steps=0;
+
         if (stat.mvdir) {
             d3.set_state(false);
             d2.set_state(false);
@@ -145,6 +150,7 @@ void ControlUnit::action(void)
 }
 
 void ControlUnit::revolve() {
+    steps++;
     if (stat.mvdir) {
         stp.step_right();
         d3.set_state(false);
@@ -178,15 +184,18 @@ void ControlUnit::calibrate()
     while ( queue_try_remove(irq_queue, &event) ); // clear the queue
 
     stat.mvdir =DOWN;
+    int steps =0;
     // run it down
     do {
         revolve();
+        steps++;
     } while ( !ds_d() );
 
     stat.mvdir =UP;
     // run it back up
     do {
         revolve();
+        steps++;
     } while ( !ds_u() );
     uint64_t time_st1 =time_us_64();
 
@@ -201,19 +210,16 @@ void ControlUnit::calibrate()
 
     // set the status of the door
     stat.calibrated =true;
-    stat.door =OPEN;
+    stat.door  =OPEN;
     stat.mvdir =DOWN;
 
     // save the greater value of the 2
     //stat.det_amt= (clock_det > cclock_det) ? clock_det : cclock_det;
 
-    stat.deg =(clock_det+cclock_det)*18 / 2; //calculate the amount of degrees
+    stat.deg =(clock_det+cclock_det) / 2; //calculate the amount of steps
 
     // calculate the 'generic speed'
-    stat.spd_gen =
-        (double)((clock_det+cclock_det) *18) / ( (time_st1-time_st0) / 1000 );
-
-    //spd_ang = (double)18 / (double)((time_st-time_st_prev) / 1000);
+    stat.spd_gen = (double)(clock_det+cclock_det) / (double)steps;
     return;
 }
 

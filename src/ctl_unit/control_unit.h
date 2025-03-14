@@ -76,8 +76,6 @@ private:
         double spd_gen; // detents/ms
     } stat;
 
-    double spd_ang;
-
     Led d1;
     Led d2;
     Led d3;
@@ -92,8 +90,9 @@ private:
     RotaryEncoder rt;
 
     uint64_t time_st_prev;
-    bool DBG_S;
-    // TODO: a way to find the speed of the motor
+    int steps;
+    int rotary_steps;
+    absolute_time_t block_timer;
 
     enum State {BLOCK, CLOSED, OPEN, STILL, MOVING, CALIBRATE};
     enum MoveState {UP, DOWN};
