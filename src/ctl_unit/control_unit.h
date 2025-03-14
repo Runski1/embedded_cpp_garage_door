@@ -36,7 +36,7 @@ opposite direction (stopped during opening→close and vice versa)
 class ControlUnit {
 public:
     //ControlUnit(queue_t*, RemoteCtrl*, int);
-    ControlUnit(queue_t*, int);
+    ControlUnit(int);
     ControlUnit(ControlUnit &) = delete; // do not copy
 
     //int operator()() const;     // returns status of the door
@@ -63,8 +63,6 @@ private:
 
     std::unique_ptr<RemoteCtrl> netctl;
     std::shared_ptr<Eeprom> rom;
-
-    queue_t* irq_queue;
 
     struct gen_state 
     {
@@ -96,6 +94,7 @@ private:
 
     enum State {BLOCK, CLOSED, OPEN, STILL, MOVING, CALIBRATE};
     enum MoveState {UP, DOWN};
+    absolute_time_t nw_timer;
 };
 
 #endif
