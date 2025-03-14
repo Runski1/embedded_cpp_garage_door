@@ -58,7 +58,7 @@ int main() {
                 remote->publish(msg_payload + " " +
                                 std::to_string(++dbg_counter));
             }
-            debugtimer = make_timeout_time_ms(5000);
+            debugtimer = make_timeout_time_ms(30000);
         }
     }
 

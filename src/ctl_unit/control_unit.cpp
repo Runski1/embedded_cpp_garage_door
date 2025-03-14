@@ -104,7 +104,6 @@ void ControlUnit::operate(void)
 
     // if door spins and its angular velocity less than 30% of measured speed
     // then something blocks the way
-    if (DBG_S)  printf("SPD: %0.10f SPD_GEN: %0.10f\n", spd_ang, stat.spd_gen);
     if (stat.door == MOVING && spd_ang < stat.spd_gen*0.5)
     {
         printf("STUCK!\n");
