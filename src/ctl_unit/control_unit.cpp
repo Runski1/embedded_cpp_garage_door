@@ -60,7 +60,7 @@ void ControlUnit::operate(void) {
 
     if (time_reached(nw_timer)) {
         netctl->poll();
-        nw_timer = make_timeout_time_ms(1000);
+        nw_timer = make_timeout_time_ms(300);
     }
     if (stat.door > CALIBRATE || stat.door < BLOCK)
         stat.door = STILL;
@@ -126,15 +126,14 @@ void ControlUnit::operate(void) {
 
 
     //printf("ST:%d RT:%d EVT:%d\n", steps, rotary_steps, event);
-    double max_diff = 300;
+    double max_diff = 400;
     if (stat.door == MOVING)
     {
         double RAT=((double)steps/(double)rotary_steps);
         double DIFF=abs(stat.spd_gen - RAT);
-        printf("%lf\n", DIFF);
 
         if (time_reached(block_timer) 
-            && ( DIFF < 320 && DIFF > max_diff && steps > 200 && rotary_steps > 0) )
+            && ( DIFF > max_diff && steps > 200 && rotary_steps > 0) )
         {
             printf("STUCK!\n");
             stat.error=true;
