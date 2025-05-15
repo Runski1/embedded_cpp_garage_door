@@ -1,5 +1,7 @@
 # cpp-garage-door
-0x0000
+Garage door project, part of Object oriented programming for embedded devices-course in Metropolia UAS.
 
-# Check linux.CMakeLists.txt for example config for Linux. 
-Change "include" line to a pico-sdk path
+I have written this project as part of a team of three.
+Other group members:
+Aaro Säilä
+Pavel Shishkin
